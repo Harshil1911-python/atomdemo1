@@ -13,7 +13,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .app{width:100%;max-width:480px;height:100%;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
 @media(min-width:640px){body{background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:24px}.app{height:min(860px,94vh);border-radius:20px;box-shadow:0 25px 60px rgba(15,23,42,.18);border:1px solid #cbd5e1}}
 .top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0;z-index:40}
-.logo{height:52px;width:auto;max-width:180px;object-fit:contain}
+.logo{height:78px;width:auto;max-width:240px;object-fit:contain}
 .top-r{display:flex;gap:4px}
 .ib{width:44px;height:44px;border:0;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t);transition:background .15s,transform .12s}
 .ib:active{background:#f1f5f9;transform:scale(.92)}.ib svg{width:22px;height:22px}
@@ -54,12 +54,13 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .cart-bar .ci{color:#fff;flex:1}.cart-bar .ci b{font-size:14px}.cart-bar .ci span{display:block;font-size:12px;opacity:.7}
 .cart-bar button{border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:13px;cursor:pointer}
 .cart-bar .hold{background:#334155;color:#fff}.cart-bar .go{background:var(--p);color:#fff}
-.ab{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 14px;border:0;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12);transition:transform .15s,opacity .2s,max-width .25s,padding .25s;overflow:hidden;white-space:nowrap}
+#fabWrap{justify-content:center;position:relative}
+.ab{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 14px;border:0;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12);transition:transform .15s,opacity .2s,max-width .25s,padding .25s,flex .25s;overflow:hidden;white-space:nowrap}
 .ab:active{transform:scale(.95)}
-.ab.hid{max-width:0!important;flex:0!important;opacity:0;padding-left:0;padding-right:0;margin:0;pointer-events:none}
-.ab.rec{background:var(--g);color:#fff;flex:1}
-.ab.bil{background:var(--p);color:#fff;flex:1}
-.ab.pl{width:56px;height:56px;border-radius:50%;background:var(--p);color:#fff;padding:0;box-shadow:0 8px 24px rgba(79,70,229,.45);flex-shrink:0}
+.ab.hid{max-width:0!important;flex:0 0 0!important;opacity:0;padding-left:0;padding-right:0;margin:0;pointer-events:none;border:0}
+.ab.rec{background:var(--g);color:#fff;flex:1;max-width:140px}
+.ab.bil{background:var(--p);color:#fff;flex:1;max-width:160px}
+.ab.pl{width:56px;height:56px;border-radius:50%;background:var(--p);color:#fff;padding:0;box-shadow:0 8px 24px rgba(79,70,229,.45);flex:0 0 56px;z-index:2}
 .ab.pl svg{width:26px;height:26px}.ab svg{width:18px;height:18px}
 .bn{display:flex;background:#fff;border-top:1px solid var(--bd);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px));flex-shrink:0;z-index:40}
 .nav{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border:0;background:0;cursor:pointer;color:#94a3b8;font-size:11px;font-weight:500;transition:color .15s}
@@ -71,15 +72,17 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .tb{padding:9px 14px;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:transform .12s,background .15s;color:var(--t)}
 .tb:active{background:#f1f5f9;transform:scale(.96)}
 .search{flex:1;min-width:130px;padding:9px 14px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;background:#f8fafc}
-.pg{flex:1;overflow-y:auto;padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:start}
+.pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:start;min-height:0}
 .pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;border:1px solid #f1f5f9;transition:transform .12s;position:relative}
 .pc:active{transform:scale(.96)}
-.pc .ph{height:100px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden}
+.pc .ph{height:110px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden}
 .pc .ph img{width:100%;height:100%;object-fit:cover}
-.pc .ph .ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center}
-.pc .pi{padding:10px 10px 0;font-size:13px;font-weight:600}.pc .pp{padding:2px 10px 12px;font-size:14px;font-weight:700;color:var(--p)}
+.pc .ph .ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.pc .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px 12px}
+.pc .pi{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .pp{font-size:14px;font-weight:700;color:var(--p);flex-shrink:0}
 .pc .oos{position:absolute;top:6px;left:6px;background:var(--r);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px}
-.tl{flex:1;overflow-y:auto;padding:12px 16px}
+.tl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;min-height:0}
 .ti{background:var(--card);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);cursor:pointer;transition:transform .12s}
 .ti:active{transform:scale(.98)}
 .ti .ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
@@ -277,17 +280,7 @@ const put=(store,data)=>new Promise((res,rej)=>{const t=db.transaction(store,'re
 const del=(store,id)=>new Promise((res,rej)=>{const t=db.transaction(store,'readwrite').objectStore(store).delete(id);t.onsuccess=()=>res();t.onerror=()=>rej(t.error)});
 const clearStore=store=>new Promise((res,rej)=>{const t=db.transaction(store,'readwrite').objectStore(store).clear();t.onsuccess=()=>res();t.onerror=()=>rej(t.error)});
 
-async function seedProducts(){const p=await all('products');if(p.length)return;
-  const soon=n=>{const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)};
-  const s=[{name:'Soap',price:40,cat:'Grocery',color:COLORS[0],stock:24,expiry:soon(120)},
-    {name:'Shampoo',price:120,cat:'Grocery',color:COLORS[1],stock:0,expiry:soon(200)},
-    {name:'Milk 1L',price:60,cat:'Grocery',color:COLORS[2],stock:10,expiry:soon(3)},
-    {name:'USB Cable',price:150,cat:'Electronics',color:COLORS[3],stock:15,expiry:''},
-    {name:'T-Shirt',price:299,cat:'Clothing',color:COLORS[4],stock:8,expiry:''},
-    {name:'Notebook',price:45,cat:'General',color:COLORS[5],stock:30,expiry:''},
-    {name:'Bread',price:35,cat:'Grocery',color:COLORS[6],stock:5,expiry:soon(1)},
-    {name:'Chips',price:20,cat:'Grocery',color:COLORS[7],stock:0,expiry:soon(45)}];
-  for(const x of s)await put('products',x)}
+async function seedProducts(){/* no fake/demo products — catalog starts empty */}
 
 function productIcon(p){if(p.photo)return `<img src="${p.photo}" alt="">`;const c=p.color||COLORS[0];return `<div class="ico" style="background:${c}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>`}
 const daysLeft=exp=>Math.ceil((new Date(exp)-new Date())/86400000);
@@ -309,7 +302,13 @@ async function refreshCatalog(){await renderExStCounts();if($('#v-photo').classL
 /* ---------- FAB / plus ---------- */
 $('#btnPlus').onclick=()=>{plusOpen=!plusOpen;$('#btnRec').classList.toggle('hid',!plusOpen);$('#btnBil').classList.toggle('hid',!plusOpen)};
 $('#btnBil').onclick=()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');showView('photo')};
-$('#btnRec').onclick=async()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');const list=(await all('transactions')).filter(t=>t.status==='unpaid');const box=$('#sheetUpB');box.innerHTML=list.length?list.map(t=>`<div class="sheet-item" data-id="${t.id}"><div class="si">${productIcon({})}</div><div class="sn">${t.title}<small>${t.subtitle||''}</small></div><div class="sp">${fmt(t.amount)}</div></div>`).join(''):'<div class="empty">No unpaid invoices</div>';$$('#sheetUpB .sheet-item').forEach(el=>el.onclick=async()=>{const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');closeSheets();renderTx()});openSheet('#sheetUnpaid')};
+$('#btnRec').onclick=async()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');const list=(await all('transactions')).filter(t=>t.status==='unpaid');const box=$('#sheetUpB');
+  let html='<div class="af" style="margin-bottom:14px;padding:12px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0"><label style="color:#047857">Miscellaneous receive (₹)</label><input id="miscAmt" type="number" min="1" placeholder="Enter amount" style="margin-top:6px"><button class="save" id="miscSave" style="margin-top:10px;background:var(--g)">Record Received</button></div>';
+  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>`<div class="sheet-item" data-id="${t.id}"><div class="si">${productIcon({})}</div><div class="sn">${t.title}<small>${t.subtitle||''}</small></div><div class="sp">${fmt(t.amount)}</div></div>`).join(''):'<div class="empty" style="padding:16px 0">No unpaid invoices — use form above for misc receive</div>';
+  box.innerHTML=html;
+  $('#miscSave').onclick=async()=>{const amt=+$('#miscAmt').value;if(!amt||amt<=0)return toast('Enter a valid amount');const tx={id:crypto.randomUUID(),title:'Miscellaneous',subtitle:`Received • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:amt,status:'paid',date:new Date().toISOString(),icon:'cart'};await put('transactions',tx);toast('Received '+fmt(amt));closeSheets();renderTx()};
+  $$('#sheetUpB .sheet-item').forEach(el=>el.onclick=async()=>{const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');closeSheets();renderTx()});
+  openSheet('#sheetUnpaid')};
 
 /* ---------- sheets ---------- */
 function openSheet(id){$(id).classList.add('on');$('#sheetOv').classList.add('on')}
@@ -328,7 +327,7 @@ $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
 
 /* ---------- catalog / cart ---------- */
-async function renderPhoto(q=''){const list=await all('products');const f=q?list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())):list;const g=$('#psGrid');if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet — add one from the menu</div>';return}g.innerHTML=f.map(p=>`<div class="pc" data-id="${p.id}">${(p.stock||0)<=0?'<div class="oos">Out of stock</div>':''}<div class="ph">${productIcon(p)}</div><div class="pi">${p.name}</div><div class="pp">${fmt(p.price)}</div></div>`).join('');$$('.pc').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
+async function renderPhoto(q=''){const list=await all('products');const f=q?list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())):list;const g=$('#psGrid');if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet — add one from the menu</div>';return}g.innerHTML=f.map(p=>`<div class="pc" data-id="${p.id}">${(p.stock||0)<=0?'<div class="oos">Out of stock</div>':''}<div class="ph">${productIcon(p)}</div><div class="meta"><div class="pi">${p.name}</div><div class="pp">${fmt(p.price)}</div></div></div>`).join('');$$('.pc').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>toast('Barcode scanning coming soon');
 
 async function renderText(q){const box=$('#tsList');if(!q.trim()){box.innerHTML='<div class="empty">Start typing to find a product</div>';return}const list=await all('products');const f=list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase()));if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>`<div class="ti" data-id="${p.id}"><div class="ico">${productIcon(p)}</div><span>${p.name}${(p.stock||0)<=0?' · out of stock':''}</span><em>${fmt(p.price)}</em></div>`).join('');$$('.ti').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
