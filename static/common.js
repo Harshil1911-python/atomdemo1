@@ -88,5 +88,18 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
-'<div class="adm-sub" id="sub-settings"><button type="button" data-act="erase">Erase All Data</button><button type="button" data-act="panel">Change Panel</button></div>';
+'<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
+
+
+function logSession(panel){
+  try{
+    const key='atom_sessions';
+    const list=JSON.parse(localStorage.getItem(key)||'[]');
+    const now=new Date();
+    const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true});
+    list.unshift({panel,at:now.toISOString(),ist});
+    localStorage.setItem(key,JSON.stringify(list.slice(0,200)));
+  }catch(e){}
+}
+function getSessions(){try{return JSON.parse(localStorage.getItem('atom_sessions')||'[]')}catch(e){return[]}}

@@ -221,7 +221,7 @@ async function renderPhoto(q=''){const list=await all('products');const f=q?list
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>toast('Barcode scanning coming soon');
 async function renderText(q){const box=$('#tsList');if(!q.trim()){box.innerHTML='<div class="empty">Start typing to find a product</div>';return}const list=await all('products');const f=list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase()));if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>`<div class="ti" data-id="${p.id}"><div class="ico">${productIcon(p)}</div><span>${p.name}${(p.stock||0)<=0?' · out of stock':''}</span><em>${fmt(p.price)}</em></div>`).join('');$$('.ti').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
 $('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>toast('Barcode scanning coming soon');
-function addToCart(p){if(!p)return;const line=cart.find(i=>i.id===p.id);if(line)line.qty++;else cart.push({id:p.id,name:p.name,price:p.price,qty:1});renderCartBar();toast('Added: '+p.name)}
+function addToCart(p){if(!p)return;const line=cart.find(i=>i.id===p.id);if(line)line.qty++;else cart.push({id:p.id,name:p.name,price:p.price,qty:1});renderCartBar()}
 function renderCartBar(){const n=cart.reduce((a,c)=>a+c.qty,0),total=cart.reduce((a,c)=>a+c.qty*c.price,0),bar=$('#cartBar');if(!n){bar.style.display='none';return}bar.style.display='flex';$('#cartTotal').textContent=fmt(total);$('#cartCount').textContent=n+' item'+(n>1?'s':'')}
 
 function renderCoItems(){$('#coItems').innerHTML=cart.map((c,i)=>`<div class="co-item"><span>${c.name}</span><div class="qtybox"><button data-i="${i}" data-d="-1">−</button>${c.qty}<button data-i="${i}" data-d="1">+</button></div><b>${fmt(c.qty*c.price)}</b></div>`).join('');$('#coTotal').textContent=fmt(cart.reduce((a,c)=>a+c.qty*c.price,0));$$('#coItems button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;cart[i].qty+=+b.dataset.d;if(cart[i].qty<=0)cart.splice(i,1);renderCoItems();renderCartBar();if(!cart.length){$('#coM').classList.remove('on');$('#coCart').classList.remove('on')}})}
@@ -245,6 +245,7 @@ async function renderTx(){const list=await all('transactions'),box=$('#txList');
 
 document.addEventListener('contextmenu',e=>e.preventDefault());
 (async()=>{
+  logSession('Billing');
   $('#drawerBody').innerHTML=panelLinks('billing');
   initShell();
   await openDB();

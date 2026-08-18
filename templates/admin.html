@@ -33,6 +33,13 @@
 .pi .info{flex:1;min-width:0}.pi .name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pi .meta{font-size:12px;color:var(--m);margin-top:2px}.pi .price{font-size:14px;font-weight:700;color:var(--p);flex-shrink:0}
 .pi .del{width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r);cursor:pointer;flex-shrink:0;font-size:16px}
+
+.panel-view{display:none}.panel-view.on{display:block}
+.fmt-box{background:#f8fafc;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:12px;line-height:1.55;color:var(--m);font-weight:500}
+.fmt-box code{display:block;background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:8px;margin-top:8px;font-size:11px;overflow-x:auto;white-space:pre;font-family:ui-monospace,monospace}
+.sess-item{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sess-item .pn{font-weight:700;font-size:14px}.sess-item .tm{font-size:12px;color:var(--m);font-weight:500}
+.hidden-file{display:none}
 </style>
 </head>
 <body>
@@ -46,18 +53,50 @@
 <div class="col">
   <div class="vhead"><h2>Admin</h2><p>Catalog, stock &amp; store controls</p></div>
   <div class="scroll">
-    <div class="stats">
-      <div class="stat purple"><div class="lbl">Products</div><div class="val" id="sTotal">0</div></div>
-      <div class="stat green"><div class="lbl">In stock</div><div class="val" id="sIn">0</div></div>
-      <div class="stat red"><div class="lbl">Out of stock</div><div class="val" id="sOut">0</div></div>
-      <div class="stat"><div class="lbl">Inventory value</div><div class="val" id="sVal" style="font-size:16px">₹0</div></div>
+    <div class="panel-view on" id="viewMain">
+      <div class="stats">
+        <div class="stat purple"><div class="lbl">Products</div><div class="val" id="sTotal">0</div></div>
+        <div class="stat green"><div class="lbl">In stock</div><div class="val" id="sIn">0</div></div>
+        <div class="stat red"><div class="lbl">Out of stock</div><div class="val" id="sOut">0</div></div>
+        <div class="stat"><div class="lbl">Inventory value</div><div class="val" id="sVal" style="font-size:16px">₹0</div></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-p" id="btnAdd">+ Add Product</button>
+        <button class="btn btn-d" id="btnErase">Erase All Data</button>
+      </div>
+      <div class="sec-title">All products</div>
+      <div class="plist" id="plist"><div class="empty">No products yet. Tap Add Product.</div></div>
     </div>
-    <div class="actions">
-      <button class="btn btn-p" id="btnAdd">+ Add Product</button>
-      <button class="btn btn-d" id="btnErase">Erase All Data</button>
+    <div class="panel-view" id="viewDatabase">
+      <div class="sec-title">Database</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Backup includes products (with photos), transactions and held bills.</p>
+      <div class="actions">
+        <button class="btn btn-p" id="btnBackup">Create Backup</button>
+        <button class="btn btn-g" id="btnRestore" style="background:#ecfdf5;color:var(--g)">Restore Backup</button>
+        <input type="file" id="restoreFile" class="hidden-file" accept=".json,application/json">
+      </div>
+      <div class="sec-title" style="margin-top:8px">Import Excel / CSV</div>
+      <div class="fmt-box">
+        Use this column format (first row = headers):
+        <code>name,price,stock,category,expiry
+Soap,40,24,Grocery,2026-12-31
+Shampoo,120,10,Grocery,
+USB Cable,150,15,Electronics,</code>
+        Expiry is optional (YYYY-MM-DD). Photos are not in CSV — add them later in Admin.
+      </div>
+      <div class="actions">
+        <button class="btn btn-p" id="btnImportCsv">Import CSV / Excel (.csv)</button>
+        <input type="file" id="importFile" class="hidden-file" accept=".csv,.txt,text/csv">
+      </div>
+      <div class="actions" style="margin-top:8px">
+        <button class="btn btn-d" id="btnErase2">Erase All Data</button>
+      </div>
     </div>
-    <div class="sec-title">All products</div>
-    <div class="plist" id="plist"><div class="empty">No products yet. Tap Add Product.</div></div>
+    <div class="panel-view" id="viewSessions">
+      <div class="sec-title">Sessions</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Panel visits in Indian Standard Time (IST).</p>
+      <div id="sessList"><div class="empty">No sessions logged yet.</div></div>
+    </div>
   </div>
 </div>
 <div class="modal" id="admM">
@@ -95,23 +134,92 @@ $('#pPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new Fil
 $('#pSave').onclick=async()=>{const n=$('#pName').value.trim(),pr=+$('#pPrice').value,c=$('#pCat').value,st=+$('#pStock').value||0,ex=$('#pExpiry').value;if(!n||!(pr>=0))return toast('Name & price required');const data={name:n,price:pr,cat:c,stock:st,expiry:ex,color:COLORS[Math.floor(Math.random()*COLORS.length)]};if(photoData)data.photo=photoData;await put('products',data);toast('Product saved');$('#admM').classList.remove('on');refresh()};
 $('#btnErase').onclick=async()=>{if(!(await appConfirm('Erase All Data','Erase all products, transactions and held bills? This cannot be undone.','Erase',true)))return;await clearStore('products');await clearStore('transactions');await clearStore('held');toast('All data erased');refresh()};
 document.addEventListener('contextmenu',e=>e.preventDefault());
+
+function showAdminView(id){
+  $$('.panel-view').forEach(v=>v.classList.remove('on'));
+  const el=$(id);if(el)el.classList.add('on');
+  if(id==='#viewSessions')renderSessions();
+}
+
+function renderSessions(){
+  const list=getSessions(),box=$('#sessList');
+  if(!list.length){box.innerHTML='<div class="empty">No sessions logged yet.</div>';return}
+  box.innerHTML=list.map(s=>`<div class="sess-item"><span class="pn">${s.panel}</span><span class="tm">${s.ist} IST</span></div>`).join('');
+}
+
+async function doBackup(){
+  const data={version:1,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held')};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const a=document.createElement('a');
+  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
+  a.href=URL.createObjectURL(blob);a.download='ATOM-backup-'+d+'.json';a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Backup downloaded');
+}
+
+async function doRestore(file){
+  try{
+    const text=await file.text();
+    const data=JSON.parse(text);
+    if(!data||!Array.isArray(data.products))return toast('Invalid backup file');
+    if(!(await appConfirm('Restore','This will replace all current products, transactions and held bills. Continue?','Restore',true)))return;
+    await clearStore('products');await clearStore('transactions');await clearStore('held');
+    for(const x of (data.products||[])){const {id,...rest}=x;await put('products',rest)}
+    for(const x of (data.transactions||[]))await put('transactions',x);
+    for(const x of (data.held||[])){const {id,...rest}=x;await put('held',rest)}
+    toast('Restore complete');refresh();showAdminView('#viewMain');
+  }catch(e){toast('Restore failed')}
+}
+
+function parseCsv(text){
+  const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(Boolean);
+  if(lines.length<2)return[];
+  const split=row=>{const out=[];let cur='',q=false;for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){q=!q;continue}if(c===','&&!q){out.push(cur.trim());cur='';continue}cur+=c}out.push(cur.trim());return out};
+  const headers=split(lines[0]).map(h=>h.toLowerCase());
+  const ni=headers.indexOf('name'),pi=headers.indexOf('price'),si=headers.indexOf('stock'),ci=headers.indexOf('category'),ei=headers.indexOf('expiry');
+  if(ni<0||pi<0)return null;
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const c=split(lines[i]);if(!c[ni])continue;
+    rows.push({name:c[ni],price:+c[pi]||0,stock:si>=0?(+c[si]||0):0,cat:(ci>=0&&c[ci])||'General',expiry:(ei>=0&&c[ei])||'',color:COLORS[Math.floor(Math.random()*COLORS.length)]});
+  }
+  return rows;
+}
+
+async function doImport(file){
+  const text=await file.text();
+  const rows=parseCsv(text);
+  if(rows===null)return toast('Need name and price columns');
+  if(!rows.length)return toast('No rows found');
+  if(!(await appConfirm('Import',`Import ${rows.length} product(s)?`,'Import',false)))return;
+  for(const r of rows)await put('products',r);
+  toast('Imported '+rows.length+' products');refresh();showAdminView('#viewMain');
+}
+
 (async()=>{
+  logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
   initShell();
   await openDB();
   await refresh();
-  // admin menu actions
   const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
-  $('#admOverview')&&($('#admOverview').onclick=()=>{closeDr();toast('Overview')});
-  $('#admNotif')&&($('#admNotif').onclick=()=>{closeDr();toast('No new notifications')});
+  $('#admOverview')&&($('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain')});
+  $('#admNotif')&&($('#admNotif').onclick=()=>{closeDr()});
   $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
     const a=b.dataset.act;closeDr();
-    if(a==='add-product')$('#btnAdd').click();
-    else if(a==='all-products'||a==='low-stock'){toast(a==='low-stock'?'Low stock list':'All products');window.scrollTo(0,0)}
-    else if(a==='erase'){$('#btnErase').click()}
+    if(a==='add-product'){$('#btnAdd').click();showAdminView('#viewMain')}
+    else if(a==='all-products'||a==='low-stock'){showAdminView('#viewMain')}
+    else if(a==='database'){showAdminView('#viewDatabase')}
+    else if(a==='sessions'){showAdminView('#viewSessions')}
     else if(a==='panel'){location.href='/billing'}
-    else toast('Coming soon');
+    else if(a==='erase'){$('#btnErase').click()}
   });
+  $('#btnBackup').onclick=doBackup;
+  $('#btnRestore').onclick=()=>$('#restoreFile').click();
+  $('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
+  $('#btnImportCsv').onclick=()=>$('#importFile').click();
+  $('#importFile').onchange=e=>{const f=e.target.files[0];if(f)doImport(f);e.target.value=''};
+  $('#btnErase2').onclick=()=>$('#btnErase').click();
 })();
 </script>
 </body>
