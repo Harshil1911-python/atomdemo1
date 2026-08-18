@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#4f46e5">
@@ -20,29 +19,41 @@
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
 .stat{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--sh);border:1px solid #f1f5f9}
 .stat .lbl{font-size:11px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em}
-.stat .val{font-size:22px;font-weight:800;margin-top:4px;letter-spacing:-.03em}
+.stat .val{font-size:22px;font-weight:800;margin-top:4px}
 .stat.green .val{color:var(--g)}.stat.red .val{color:var(--r)}.stat.purple .val{color:var(--p)}
 .actions{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
-.btn{width:100%;padding:14px 16px;border:0;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn{width:100%;padding:14px 16px;border:0;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
 .btn-p{background:var(--p);color:#fff}.btn-d{background:#fee2e2;color:var(--r)}
+.btn-g{background:#ecfdf5;color:var(--g)}.btn-s{background:#f1f5f9;color:var(--t)}
 .sec-title{font-size:14px;font-weight:700;margin-bottom:10px}
 .plist{display:flex;flex-direction:column;gap:8px}
-.pi{background:var(--card);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);border:1px solid #f1f5f9}
+.pi{background:var(--card);border-radius:12px;padding:12px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);border:1px solid #f1f5f9;cursor:pointer}
 .pi .thumb{width:48px;height:48px;border-radius:10px;background:#f1f5f9;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .pi .thumb img{width:100%;height:100%;object-fit:cover}
 .pi .info{flex:1;min-width:0}.pi .name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pi .meta{font-size:12px;color:var(--m);margin-top:2px}.pi .price{font-size:14px;font-weight:700;color:var(--p);flex-shrink:0}
-.pi .del{width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r);cursor:pointer;flex-shrink:0;font-size:16px}
-
+.pi .del{width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r);cursor:pointer;font-size:16px;flex-shrink:0}
 .panel-view{display:none}.panel-view.on{display:block}
 .fmt-box{background:#f8fafc;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin:12px 0;font-size:12px;line-height:1.55;color:var(--m);font-weight:500}
 .fmt-box code{display:block;background:#0f172a;color:#e2e8f0;padding:10px 12px;border-radius:8px;margin-top:8px;font-size:11px;overflow-x:auto;white-space:pre;font-family:ui-monospace,monospace}
-.sess-item{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.sess-item{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid #f1f5f9;display:flex;justify-content:space-between;gap:10px}
 .sess-item .pn{font-weight:700;font-size:14px}.sess-item .tm{font-size:12px;color:var(--m);font-weight:500}
 .hidden-file{display:none}
-</style>
-</head>
-<body>
+.chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{padding:6px 12px;border-radius:20px;background:#f1f5f9;font-size:12px;font-weight:600;border:0;cursor:pointer;font-family:inherit}
+.chip.on{background:var(--p);color:#fff}
+.var-item,.inv-item,.pur-item{background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:var(--sh);border:1px solid #f1f5f9}
+.var-item .vn{font-weight:700;font-size:14px}.var-item .vm{font-size:12px;color:var(--m);margin-top:4px}
+.inv-item{display:flex;align-items:center;gap:12px}
+.inv-item .info{flex:1;min-width:0}
+.inv-item .stk{font-size:16px;font-weight:800;color:var(--p)}
+.inv-item .adj{display:flex;gap:4px}
+.inv-item .adj button{width:32px;height:32px;border:0;border-radius:8px;background:#eef2ff;color:var(--p);font-weight:700;cursor:pointer;font-size:16px}
+.pur-item .pt{font-weight:700;font-size:14px}.pur-item .pm{font-size:12px;color:var(--m);margin-top:3px}
+.af textarea{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%;font-family:inherit;resize:vertical;min-height:60px}
+.af textarea:focus{border-color:var(--p)}
+.edit-hint{font-size:11px;color:var(--m);margin-bottom:8px;font-weight:500}
+</style></head><body>
 <div class="app">
 <header class="top">
   <img class="logo" src="/static/logo.png" alt="ATOM">
@@ -51,176 +62,144 @@
 <div class="ov" id="ov"></div>
 <aside class="dr" id="dr"><div class="dh"><h1>ATOM POS</h1><p>Admin panel</p></div><div class="db" id="drawerBody"></div></aside>
 <div class="col">
-  <div class="vhead"><h2>Admin</h2><p>Catalog, stock &amp; store controls</p></div>
+  <div class="vhead"><h2 id="pageTitle">Admin</h2><p id="pageSub">Catalog, stock and store controls</p></div>
   <div class="scroll">
+    <!-- Overview -->
     <div class="panel-view on" id="viewMain">
       <div class="stats">
         <div class="stat purple"><div class="lbl">Products</div><div class="val" id="sTotal">0</div></div>
         <div class="stat green"><div class="lbl">In stock</div><div class="val" id="sIn">0</div></div>
         <div class="stat red"><div class="lbl">Out of stock</div><div class="val" id="sOut">0</div></div>
-        <div class="stat"><div class="lbl">Inventory value</div><div class="val" id="sVal" style="font-size:16px">₹0</div></div>
+        <div class="stat"><div class="lbl">Inventory value</div><div class="val" id="sVal" style="font-size:16px">Rs 0</div></div>
       </div>
       <div class="actions">
         <button class="btn btn-p" id="btnAdd">+ Add Product</button>
         <button class="btn btn-d" id="btnErase">Erase All Data</button>
       </div>
-      <div class="sec-title">All products</div>
+      <div class="sec-title">All products <span style="font-weight:500;color:var(--m);font-size:12px">(tap to edit)</span></div>
       <div class="plist" id="plist"><div class="empty">No products yet. Tap Add Product.</div></div>
     </div>
+
+    <!-- Database -->
     <div class="panel-view" id="viewDatabase">
       <div class="sec-title">Database</div>
-      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Backup includes products (with photos), transactions and held bills.</p>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Backup includes products (with photos), transactions, held bills, variants and purchases.</p>
       <div class="actions">
-        <button class="btn btn-p" id="btnBackup">Create Backup</button>
-        <button class="btn btn-g" id="btnRestore" style="background:#ecfdf5;color:var(--g)">Restore Backup</button>
+        <button class="btn btn-p" id="btnBackup">Create Backup &amp; Share</button>
+        <button class="btn btn-g" id="btnRestore">Restore Backup</button>
         <input type="file" id="restoreFile" class="hidden-file" accept=".json,application/json">
       </div>
       <div class="sec-title" style="margin-top:8px">Import Excel / CSV</div>
       <div class="fmt-box">
-        Use this column format (first row = headers):
-        <code>name,price,stock,category,expiry
-Soap,40,24,Grocery,2026-12-31
-Shampoo,120,10,Grocery,
-USB Cable,150,15,Electronics,</code>
-        Expiry is optional (YYYY-MM-DD). Photos are not in CSV — add them later in Admin.
+        Supports <b>.csv</b>, <b>.xlsx</b> and <b>.xls</b>. First row = headers. Use columns:
+        <code>name,price,stock,category,expiry,barcode,cost,unit,minStock,sku,tax,supplier
+Soap,40,24,Grocery,2026-12-31,890123,25,pcs,5,SOAP01,0,ABC Stores
+Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
+        Optional columns can be left blank. Photos are not in the file — add them later.
       </div>
       <div class="actions">
-        <button class="btn btn-p" id="btnImportCsv">Import CSV / Excel (.csv)</button>
-        <input type="file" id="importFile" class="hidden-file" accept=".csv,.txt,text/csv">
+        <button class="btn btn-p" id="btnImportCsv">Import CSV / Excel</button>
+        <input type="file" id="importFile" class="hidden-file" accept=".csv,.txt,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
       </div>
       <div class="actions" style="margin-top:8px">
         <button class="btn btn-d" id="btnErase2">Erase All Data</button>
       </div>
     </div>
+
+    <!-- Sessions -->
     <div class="panel-view" id="viewSessions">
       <div class="sec-title">Sessions</div>
       <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Panel visits in Indian Standard Time (IST).</p>
       <div id="sessList"><div class="empty">No sessions logged yet.</div></div>
     </div>
+
+    <!-- Variants -->
+    <div class="panel-view" id="viewVariants">
+      <div class="sec-title">Variants Management</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Add size/color/weight variants linked to a product.</p>
+      <div class="actions">
+        <button class="btn btn-p" id="btnAddVariant">+ Add Variant</button>
+      </div>
+      <div id="varList"><div class="empty">No variants yet.</div></div>
+    </div>
+
+    <!-- Inventory -->
+    <div class="panel-view" id="viewInventory">
+      <div class="sec-title">Inventory Management</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Adjust stock quantities. Low stock items are highlighted.</p>
+      <div class="chip-row" id="invFilter">
+        <button class="chip on" data-f="all">All</button>
+        <button class="chip" data-f="low">Low stock</button>
+        <button class="chip" data-f="out">Out of stock</button>
+      </div>
+      <div id="invList"><div class="empty">No products.</div></div>
+    </div>
+
+    <!-- Purchase -->
+    <div class="panel-view" id="viewPurchase">
+      <div class="sec-title">Purchase Management</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Record purchases to increase stock and track supplier buys.</p>
+      <div class="actions">
+        <button class="btn btn-p" id="btnAddPurchase">+ Record Purchase</button>
+      </div>
+      <div id="purList"><div class="empty">No purchases recorded yet.</div></div>
+    </div>
   </div>
 </div>
+
+<!-- Product modal (Add / Edit) -->
 <div class="modal" id="admM">
   <div class="mbox">
-    <div class="mhd">Add Product <button id="admX">×</button></div>
+    <div class="mhd"><span id="prodModalTitle">Add Product</span> <button id="admX" type="button">×</button></div>
     <div class="mbd"><div class="af">
       <div class="photo-preview" id="pPrev"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>
       <label>Photo</label><input type="file" id="pPhoto" accept="image/*">
-      <label>Name</label><input id="pName" placeholder="Product name">
-      <div class="row2"><div><label>Price (₹)</label><input id="pPrice" type="number" placeholder="0" min="0"></div><div><label>Stock qty</label><input id="pStock" type="number" placeholder="0" min="0"></div></div>
-      <label>Category</label><select id="pCat"><option>General</option><option>Grocery</option><option>Electronics</option><option>Clothing</option></select>
-      <label>Expiry date (optional)</label><input id="pExpiry" type="date">
+      <label>Name *</label><input id="pName" placeholder="Product name">
+      <div class="row2"><div><label>Price (Rs) *</label><input id="pPrice" type="number" placeholder="0" min="0" step="0.01"></div><div><label>Cost (Rs)</label><input id="pCost" type="number" placeholder="0" min="0" step="0.01"></div></div>
+      <div class="row2"><div><label>Stock qty</label><input id="pStock" type="number" placeholder="0" min="0"></div><div><label>Min stock</label><input id="pMinStock" type="number" placeholder="0" min="0"></div></div>
+      <div class="row2"><div><label>Unit</label><select id="pUnit"><option>pcs</option><option>kg</option><option>g</option><option>L</option><option>ml</option><option>box</option><option>pack</option><option>bottle</option><option>m</option></select></div><div><label>Tax %</label><input id="pTax" type="number" placeholder="0" min="0" step="0.01"></div></div>
+      <label>Category</label><select id="pCat"><option>General</option><option>Grocery</option><option>Electronics</option><option>Clothing</option><option>Pharmacy</option><option>Stationery</option><option>Food</option><option>Other</option></select>
+      <div class="row2"><div><label>Barcode / SKU</label><input id="pBarcode" placeholder="Barcode or SKU"></div><div><label>SKU code</label><input id="pSku" placeholder="Internal code"></div></div>
+      <label>Supplier</label><input id="pSupplier" placeholder="Supplier name">
+      <label>Expiry date</label><input id="pExpiry" type="date">
+      <label>Description</label><textarea id="pDesc" placeholder="Optional notes"></textarea>
       <button class="save" id="pSave">Save Product</button>
     </div></div>
   </div>
 </div>
+
+<!-- Variant modal -->
+<div class="modal" id="varM">
+  <div class="mbox">
+    <div class="mhd">Add Variant <button id="varX" type="button">×</button></div>
+    <div class="mbd"><div class="af">
+      <label>Product *</label><select id="vProduct"></select>
+      <label>Variant name *</label><input id="vName" placeholder="e.g. Red / Large / 500g">
+      <div class="row2"><div><label>Price (Rs)</label><input id="vPrice" type="number" placeholder="0" min="0" step="0.01"></div><div><label>Stock</label><input id="vStock" type="number" placeholder="0" min="0"></div></div>
+      <label>SKU / Barcode</label><input id="vSku" placeholder="Optional">
+      <button class="save" id="vSave">Save Variant</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- Purchase modal -->
+<div class="modal" id="purM">
+  <div class="mbox">
+    <div class="mhd">Record Purchase <button id="purX" type="button">×</button></div>
+    <div class="mbd"><div class="af">
+      <label>Product *</label><select id="purProduct"></select>
+      <div class="row2"><div><label>Qty *</label><input id="purQty" type="number" placeholder="0" min="1"></div><div><label>Cost / unit (Rs)</label><input id="purCost" type="number" placeholder="0" min="0" step="0.01"></div></div>
+      <label>Supplier</label><input id="purSupplier" placeholder="Supplier name">
+      <label>Invoice / Ref</label><input id="purRef" placeholder="Optional">
+      <label>Notes</label><textarea id="purNotes" placeholder="Optional"></textarea>
+      <button class="save" id="purSave">Save Purchase</button>
+    </div></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 </div>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script src="/static/common.js"></script>
-<script>
-let photoData=null;
-async function refresh(){
-  const list=await all('products'),total=list.length,out=list.filter(p=>(p.stock||0)<=0).length;
-  const inv=list.reduce((a,p)=>a+(p.price||0)*Math.max(0,p.stock||0),0);
-  $('#sTotal').textContent=total;$('#sIn').textContent=total-out;$('#sOut').textContent=out;$('#sVal').textContent=fmt(inv);
-  const box=$('#plist');
-  if(!list.length){box.innerHTML='<div class="empty">No products yet. Tap Add Product.</div>';return}
-  list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  box.innerHTML=list.map(p=>`<div class="pi" data-id="${p.id}"><div class="thumb">${productIcon(p)}</div><div class="info"><div class="name">${p.name}</div><div class="meta">${p.cat||'General'} · Stock ${p.stock||0}</div></div><div class="price">${fmt(p.price)}</div><button class="del" title="Delete">×</button></div>`).join('');
-  $$('.pi .del').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!(await appConfirm('Delete','Delete this product?','Delete',true)))return;await del('products',+b.closest('.pi').dataset.id);toast('Product deleted');refresh()});
-}
-$('#btnAdd').onclick=()=>{photoData=null;$('#pPrev').innerHTML='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';$('#pPhoto').value='';$('#pName').value='';$('#pPrice').value='';$('#pStock').value='';$('#pExpiry').value='';$('#admM').classList.add('on')};
-$('#admX').onclick=()=>$('#admM').classList.remove('on');
-$('#pPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{photoData=ev.target.result;$('#pPrev').innerHTML=`<img src="${photoData}" alt="">`};r.readAsDataURL(f)};
-$('#pSave').onclick=async()=>{const n=$('#pName').value.trim(),pr=+$('#pPrice').value,c=$('#pCat').value,st=+$('#pStock').value||0,ex=$('#pExpiry').value;if(!n||!(pr>=0))return toast('Name & price required');const data={name:n,price:pr,cat:c,stock:st,expiry:ex,color:COLORS[Math.floor(Math.random()*COLORS.length)]};if(photoData)data.photo=photoData;await put('products',data);toast('Product saved');$('#admM').classList.remove('on');refresh()};
-$('#btnErase').onclick=async()=>{if(!(await appConfirm('Erase All Data','Erase all products, transactions and held bills? This cannot be undone.','Erase',true)))return;await clearStore('products');await clearStore('transactions');await clearStore('held');toast('All data erased');refresh()};
-document.addEventListener('contextmenu',e=>e.preventDefault());
-
-function showAdminView(id){
-  $$('.panel-view').forEach(v=>v.classList.remove('on'));
-  const el=$(id);if(el)el.classList.add('on');
-  if(id==='#viewSessions')renderSessions();
-}
-
-function renderSessions(){
-  const list=getSessions(),box=$('#sessList');
-  if(!list.length){box.innerHTML='<div class="empty">No sessions logged yet.</div>';return}
-  box.innerHTML=list.map(s=>`<div class="sess-item"><span class="pn">${s.panel}</span><span class="tm">${s.ist} IST</span></div>`).join('');
-}
-
-async function doBackup(){
-  const data={version:1,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held')};
-  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
-  const a=document.createElement('a');
-  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
-  a.href=URL.createObjectURL(blob);a.download='ATOM-backup-'+d+'.json';a.click();
-  URL.revokeObjectURL(a.href);
-  toast('Backup downloaded');
-}
-
-async function doRestore(file){
-  try{
-    const text=await file.text();
-    const data=JSON.parse(text);
-    if(!data||!Array.isArray(data.products))return toast('Invalid backup file');
-    if(!(await appConfirm('Restore','This will replace all current products, transactions and held bills. Continue?','Restore',true)))return;
-    await clearStore('products');await clearStore('transactions');await clearStore('held');
-    for(const x of (data.products||[])){const {id,...rest}=x;await put('products',rest)}
-    for(const x of (data.transactions||[]))await put('transactions',x);
-    for(const x of (data.held||[])){const {id,...rest}=x;await put('held',rest)}
-    toast('Restore complete');refresh();showAdminView('#viewMain');
-  }catch(e){toast('Restore failed')}
-}
-
-function parseCsv(text){
-  const lines=text.replace(/^\uFEFF/,'').trim().split(/\r?\n/).filter(Boolean);
-  if(lines.length<2)return[];
-  const split=row=>{const out=[];let cur='',q=false;for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){q=!q;continue}if(c===','&&!q){out.push(cur.trim());cur='';continue}cur+=c}out.push(cur.trim());return out};
-  const headers=split(lines[0]).map(h=>h.toLowerCase());
-  const ni=headers.indexOf('name'),pi=headers.indexOf('price'),si=headers.indexOf('stock'),ci=headers.indexOf('category'),ei=headers.indexOf('expiry');
-  if(ni<0||pi<0)return null;
-  const rows=[];
-  for(let i=1;i<lines.length;i++){
-    const c=split(lines[i]);if(!c[ni])continue;
-    rows.push({name:c[ni],price:+c[pi]||0,stock:si>=0?(+c[si]||0):0,cat:(ci>=0&&c[ci])||'General',expiry:(ei>=0&&c[ei])||'',color:COLORS[Math.floor(Math.random()*COLORS.length)]});
-  }
-  return rows;
-}
-
-async function doImport(file){
-  const text=await file.text();
-  const rows=parseCsv(text);
-  if(rows===null)return toast('Need name and price columns');
-  if(!rows.length)return toast('No rows found');
-  if(!(await appConfirm('Import',`Import ${rows.length} product(s)?`,'Import',false)))return;
-  for(const r of rows)await put('products',r);
-  toast('Imported '+rows.length+' products');refresh();showAdminView('#viewMain');
-}
-
-(async()=>{
-  logSession('Admin');
-  $('#drawerBody').innerHTML=adminMenu();
-  initShell();
-  await openDB();
-  await refresh();
-  const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
-  $('#admOverview')&&($('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain')});
-  $('#admNotif')&&($('#admNotif').onclick=()=>{closeDr()});
-  $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
-    const a=b.dataset.act;closeDr();
-    if(a==='add-product'){$('#btnAdd').click();showAdminView('#viewMain')}
-    else if(a==='all-products'||a==='low-stock'){showAdminView('#viewMain')}
-    else if(a==='database'){showAdminView('#viewDatabase')}
-    else if(a==='sessions'){showAdminView('#viewSessions')}
-    else if(a==='panel'){location.href='/billing'}
-    else if(a==='erase'){$('#btnErase').click()}
-  });
-  $('#btnBackup').onclick=doBackup;
-  $('#btnRestore').onclick=()=>$('#restoreFile').click();
-  $('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
-  $('#btnImportCsv').onclick=()=>$('#importFile').click();
-  $('#importFile').onchange=e=>{const f=e.target.files[0];if(f)doImport(f);e.target.value=''};
-  $('#btnErase2').onclick=()=>$('#btnErase').click();
-})();
-</script>
-</body>
-</html>
+<script src="/static/admin.js"></script>
+</body></html>

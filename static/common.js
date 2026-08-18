@@ -4,15 +4,18 @@ const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const COLORS=['#dbeafe','#dcfce7','#fef3c7','#fce7f3','#e0e7ff','#ffedd5','#f3e8ff','#ecfdf5'];
 let db,_dlgResolve=null;
 
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',4);r.onupgradeneeded=e=>{const d=e.target.result;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',5);r.onupgradeneeded=e=>{const d=e.target.result;
   if(!d.objectStoreNames.contains('products')){const s=d.createObjectStore('products',{keyPath:'id',autoIncrement:true});s.createIndex('name','name')}
   if(!d.objectStoreNames.contains('transactions'))d.createObjectStore('transactions',{keyPath:'id'});
   if(!d.objectStoreNames.contains('held'))d.createObjectStore('held',{keyPath:'id',autoIncrement:true});
+  if(!d.objectStoreNames.contains('variants')){const s=d.createObjectStore('variants',{keyPath:'id',autoIncrement:true});s.createIndex('productId','productId')}
+  if(!d.objectStoreNames.contains('purchases'))d.createObjectStore('purchases',{keyPath:'id',autoIncrement:true});
 };r.onsuccess=e=>{db=e.target.result;res(db)};r.onerror=e=>rej(e.target.error)})}
 const all=s=>new Promise((res,rej)=>{const t=db.transaction(s,'readonly').objectStore(s).getAll();t.onsuccess=()=>res(t.result||[]);t.onerror=()=>rej(t.error)});
 const put=(s,d)=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite').objectStore(s).put(d);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error)});
 const del=(s,id)=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite').objectStore(s).delete(id);t.onsuccess=()=>res();t.onerror=()=>rej(t.error)});
 const clearStore=s=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite').objectStore(s).clear();t.onsuccess=()=>res();t.onerror=()=>rej(t.error)});
+const getById=(s,id)=>new Promise((res,rej)=>{const t=db.transaction(s,'readonly').objectStore(s).get(id);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error)});
 
 function productIcon(p){
   if(p&&p.photo)return `<img src="${p.photo}" alt="">`;
@@ -82,7 +85,14 @@ function adminMenu(){
 '<button type="button" class="adm-link" id="admOverview">Overview</button>'+
 '<button type="button" class="adm-link" id="admNotif">Notifications</button>'+
 '<button type="button" class="adm-drop" data-g="products">Products'+chev+'</button>'+
-'<div class="adm-sub" id="sub-products"><button type="button" data-act="add-product">Add Product</button><button type="button" data-act="all-products">All Products</button><button type="button" data-act="low-stock">Low Stock</button></div>'+
+'<div class="adm-sub" id="sub-products">'+
+'<button type="button" data-act="add-product">Add Product</button>'+
+'<button type="button" data-act="all-products">All Products</button>'+
+'<button type="button" data-act="variants">Variants</button>'+
+'<button type="button" data-act="inventory">Inventory</button>'+
+'<button type="button" data-act="purchase">Purchase</button>'+
+'<button type="button" data-act="low-stock">Low Stock</button>'+
+'</div>'+
 '<button type="button" class="adm-drop" data-g="sales">Sales'+chev+'</button>'+
 '<div class="adm-sub" id="sub-sales"><button type="button" data-act="sales-today">Today</button><button type="button" data-act="sales-all">All Sales</button><button type="button" data-act="unpaid">Unpaid</button></div>'+
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
@@ -90,7 +100,6 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
 '<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
-
 
 function logSession(panel){
   try{
