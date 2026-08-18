@@ -87,14 +87,32 @@ async function refresh(){
   if(!list.length){box.innerHTML='<div class="empty">No products yet. Tap Add Product.</div>';return}
   list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   box.innerHTML=list.map(p=>`<div class="pi" data-id="${p.id}"><div class="thumb">${productIcon(p)}</div><div class="info"><div class="name">${p.name}</div><div class="meta">${p.cat||'General'} · Stock ${p.stock||0}</div></div><div class="price">${fmt(p.price)}</div><button class="del" title="Delete">×</button></div>`).join('');
-  $$('.pi .del').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!confirm('Delete this product?'))return;await del('products',+b.closest('.pi').dataset.id);toast('Product deleted');refresh()});
+  $$('.pi .del').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!(await appConfirm('Delete','Delete this product?','Delete',true)))return;await del('products',+b.closest('.pi').dataset.id);toast('Product deleted');refresh()});
 }
 $('#btnAdd').onclick=()=>{photoData=null;$('#pPrev').innerHTML='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';$('#pPhoto').value='';$('#pName').value='';$('#pPrice').value='';$('#pStock').value='';$('#pExpiry').value='';$('#admM').classList.add('on')};
 $('#admX').onclick=()=>$('#admM').classList.remove('on');
 $('#pPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{photoData=ev.target.result;$('#pPrev').innerHTML=`<img src="${photoData}" alt="">`};r.readAsDataURL(f)};
 $('#pSave').onclick=async()=>{const n=$('#pName').value.trim(),pr=+$('#pPrice').value,c=$('#pCat').value,st=+$('#pStock').value||0,ex=$('#pExpiry').value;if(!n||!(pr>=0))return toast('Name & price required');const data={name:n,price:pr,cat:c,stock:st,expiry:ex,color:COLORS[Math.floor(Math.random()*COLORS.length)]};if(photoData)data.photo=photoData;await put('products',data);toast('Product saved');$('#admM').classList.remove('on');refresh()};
-$('#btnErase').onclick=async()=>{if(!confirm('Erase all products, transactions and held bills? This cannot be undone.'))return;await clearStore('products');await clearStore('transactions');await clearStore('held');toast('All data erased');refresh()};
-(async()=>{$('#drawerBody').innerHTML=panelLinks('admin');initShell();await openDB();await refresh()})();
+$('#btnErase').onclick=async()=>{if(!(await appConfirm('Erase All Data','Erase all products, transactions and held bills? This cannot be undone.','Erase',true)))return;await clearStore('products');await clearStore('transactions');await clearStore('held');toast('All data erased');refresh()};
+document.addEventListener('contextmenu',e=>e.preventDefault());
+(async()=>{
+  $('#drawerBody').innerHTML=adminMenu();
+  initShell();
+  await openDB();
+  await refresh();
+  // admin menu actions
+  const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
+  $('#admOverview')&&($('#admOverview').onclick=()=>{closeDr();toast('Overview')});
+  $('#admNotif')&&($('#admNotif').onclick=()=>{closeDr();toast('No new notifications')});
+  $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
+    const a=b.dataset.act;closeDr();
+    if(a==='add-product')$('#btnAdd').click();
+    else if(a==='all-products'||a==='low-stock'){toast(a==='low-stock'?'Low stock list':'All products');window.scrollTo(0,0)}
+    else if(a==='erase'){$('#btnErase').click()}
+    else if(a==='panel'){location.href='/billing'}
+    else toast('Coming soon');
+  });
+})();
 </script>
 </body>
 </html>

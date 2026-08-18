@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#4f46e5">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -238,11 +238,12 @@ $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b))};
 $('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0),name=$('#coName').value.trim(),list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart'});const products=await all('products');for(const c of cart){const p=products.find(x=>x.id===c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
-$('#btnClear').onclick=()=>{if(!cart.length)return;if(!confirm('Clear all items from cart?'))return;cart=[];renderCartBar();toast('Cart cleared')};
+$('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
 async function renderHeld(){const list=(await all('held')).sort((a,b)=>b.id-a.id),box=$('#heldList');if(!list.length){box.innerHTML='<div class="empty">No held bills</div>';return}box.innerHTML=list.map(h=>`<div class="held" data-id="${h.id}"><div class="hr"><span>${h.items.reduce((a,c)=>a+c.qty,0)} item(s)</span><span>${fmt(h.total)}</span></div><div class="hs">Held ${new Date(h.date).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div><div class="hbtns"><button class="resume">Resume</button><button class="del">Delete</button></div></div>`).join('');$$('.held').forEach(el=>{const id=+el.dataset.id,h=list.find(x=>x.id===id);el.querySelector('.resume').onclick=async()=>{cart=h.items;renderCartBar();await del('held',id);toast('Bill resumed');showView('home')};el.querySelector('.del').onclick=async()=>{await del('held',id);toast('Held bill deleted');renderHeld()}})}
 async function renderTx(){const list=await all('transactions'),box=$('#txList');if(!list.length){box.innerHTML='<div class="empty">No recent transactions yet. Sales you make will show up here.</div>';return}list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));box.innerHTML=list.slice(0,20).map(t=>`<div class="tx" data-id="${t.id}"><div class="txi ${t.icon||'cart'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="txb"><div class="txt">${t.title}</div><div class="txs">${t.subtitle||''}</div></div><div class="txr"><div class="txa">${fmt(t.amount)}</div><span class="badge ${t.status}">${t.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('');$$('.tx').forEach(el=>el.onclick=async()=>{if(el.querySelector('.badge').classList.contains('unpaid')){const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');renderTx()}})}
 
+document.addEventListener('contextmenu',e=>e.preventDefault());
 (async()=>{
   $('#drawerBody').innerHTML=panelLinks('billing');
   initShell();
