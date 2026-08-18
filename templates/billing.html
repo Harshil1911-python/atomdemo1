@@ -6,29 +6,32 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#4f46e5">
 <title>ATOM POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
-:root{--p:#4f46e5;--pd:#4338ca;--g:#059669;--o:#ea580c;--r:#dc2626;--t:#0f172a;--m:#64748b;--bg:#f1f5f9;--card:#fff;--bd:#e2e8f0;--sh:0 2px 12px rgba(15,23,42,.06)}
-html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#94a3b8;color:var(--t);overflow:hidden}
+:root{--p:#4f46e5;--pd:#4338ca;--g:#059669;--o:#ea580c;--r:#dc2626;--t:#0f172a;--m:#64748b;--bg:#f8fafc;--card:#fff;--bd:#e2e8f0;--sh:0 2px 12px rgba(15,23,42,.06)}
+html,body{height:100%;font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--t);overflow:hidden;-webkit-font-smoothing:antialiased}
 .app{width:100%;max-width:480px;height:100%;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden}
 @media(min-width:640px){body{background:#e2e8f0;display:flex;align-items:center;justify-content:center;padding:24px}.app{height:min(860px,94vh);border-radius:20px;box-shadow:0 25px 60px rgba(15,23,42,.18);border:1px solid #cbd5e1}}
-.top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0;z-index:40}
-.logo{height:78px;width:auto;max-width:240px;object-fit:contain}
-.top-r{display:flex;gap:4px}
-.ib{width:44px;height:44px;border:0;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t);transition:background .15s,transform .12s}
-.ib:active{background:#f1f5f9;transform:scale(.92)}.ib svg{width:22px;height:22px}
+.top{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--p);border-bottom:none;flex-shrink:0;z-index:40;min-height:56px}
+.logo{height:48px;width:auto;max-width:170px;object-fit:contain}
+.top-r{display:flex;gap:2px}
+.ib{width:40px;height:40px;border:0;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;transition:background .15s,transform .12s}
+.ib:active{background:rgba(255,255,255,.15);transform:scale(.92)}.ib svg{width:20px;height:20px}
 .ov{position:absolute;inset:0;background:rgba(15,23,42,.4);z-index:90;opacity:0;visibility:hidden;transition:.25s}.ov.on{opacity:1;visibility:visible}
 .dr{position:absolute;top:0;right:0;width:82%;max-width:300px;height:100%;background:#fff;z-index:100;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-10px 0 30px rgba(0,0,0,.1)}
 .dr.on{transform:none}
 .dh{padding:28px 20px 20px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff}
-.dh h1{font-size:22px;font-weight:700;letter-spacing:-.3px}.dh p{font-size:12px;opacity:.8;margin-top:4px}
+.dh h1{font-size:22px;font-weight:800;letter-spacing:-.4px}.dh p{font-size:12px;opacity:.85;margin-top:4px;font-weight:500}
 .db{flex:1;padding:14px;overflow-y:auto}
 .db button{width:100%;padding:14px 16px;margin-bottom:8px;border:0;border-radius:12px;background:#f8fafc;font-size:14px;font-weight:600;text-align:left;cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .15s,transform .12s;color:var(--t)}
 .db button:active{background:#e2e8f0;transform:scale(.98)}.db button svg{width:20px;height:20px;color:var(--p)}
 /* main column: header -> content -> action bar -> nav, all normal flow so nothing can hide */
 .col{flex:1;display:flex;flex-direction:column;min-height:0}
 .view{display:none;flex-direction:column;flex:1;min-height:0}.view.on{display:flex}
-.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:16px}
+.main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px;min-height:0}
 .qa-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px}
 .qa{display:flex;align-items:center;gap:10px;padding:16px;border-radius:14px;border:0;font-size:15px;font-weight:600;cursor:pointer;box-shadow:var(--sh);transition:transform .12s;position:relative}
 .qa:active{transform:scale(.96)}.qa.ex{background:#fff7ed;color:#c2410c}.qa.st{background:#fef2f2;color:#b91c1c}
@@ -36,9 +39,9 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .qa .cnt{margin-left:auto;background:rgba(0,0,0,.08);border-radius:20px;padding:2px 8px;font-size:12px}
 .sec{padding:4px 16px 0}
 .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-.sh h2{font-size:16px;font-weight:700}
+.sh h2{font-size:15px;font-weight:700;letter-spacing:-.02em}
 .txl{display:flex;flex-direction:column;gap:10px}
-.empty{text-align:center;padding:36px 16px;color:var(--m);font-size:14px}
+.empty{text-align:center;padding:40px 20px;color:var(--m);font-size:14px;font-weight:500;line-height:1.5}
 .tx{background:var(--card);border-radius:14px;padding:14px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);border:1px solid #f1f5f9;cursor:pointer;transition:transform .12s}
 .tx:active{transform:scale(.98)}
 .txi{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -50,7 +53,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .badge.paid{background:#d1fae5;color:#047857}.badge.unpaid{background:#fee2e2;color:#b91c1c}
 /* action bars sit in normal document flow now - never clipped/hidden */
 .bar{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-shrink:0;background:var(--bg)}
-.bar.cart-bar{background:var(--t);padding:12px 16px;border-radius:16px 16px 0 0;margin:0 10px}
+.bar.cart-bar{background:#1e293b;padding:12px 16px;border-radius:16px 16px 0 0;margin:0 10px}
 .cart-bar .ci{color:#fff;flex:1}.cart-bar .ci b{font-size:14px}.cart-bar .ci span{display:block;font-size:12px;opacity:.7}
 .cart-bar button{border:0;border-radius:10px;padding:10px 14px;font-weight:600;font-size:13px;cursor:pointer}
 .cart-bar .hold{background:#334155;color:#fff}.cart-bar .go{background:var(--p);color:#fff}
@@ -62,27 +65,28 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .ab.bil{background:var(--p);color:#fff;flex:1;max-width:160px}
 .ab.pl{width:56px;height:56px;border-radius:50%;background:var(--p);color:#fff;padding:0;box-shadow:0 8px 24px rgba(79,70,229,.45);flex:0 0 56px;z-index:2}
 .ab.pl svg{width:26px;height:26px}.ab svg{width:18px;height:18px}
-.bn{display:flex;background:#fff;border-top:1px solid var(--bd);padding:6px 0 calc(6px + env(safe-area-inset-bottom,0px));flex-shrink:0;z-index:40}
-.nav{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border:0;background:0;cursor:pointer;color:#94a3b8;font-size:11px;font-weight:500;transition:color .15s}
+.bn{display:flex;background:#fff;border-top:1px solid var(--bd);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));flex-shrink:0;z-index:40;box-shadow:0 -4px 20px rgba(15,23,42,.04)}
+.nav{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border:0;background:0;cursor:pointer;color:#94a3b8;font-size:10px;font-weight:600;letter-spacing:.02em;transition:color .15s}
 .nav.on{color:var(--p)}.nav:active{transform:scale(.94)}.nav svg{width:22px;height:22px}
 .nav .ind{width:18px;height:3px;border-radius:2px;background:transparent;margin-top:2px}.nav.on .ind{background:var(--p)}
-.vhead{padding:14px 16px;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0}
-.vhead h2{font-size:18px;font-weight:700}
-.tools{display:flex;gap:8px;padding:12px 16px;flex-shrink:0;flex-wrap:wrap;background:#fff}
-.tb{padding:9px 14px;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:transform .12s,background .15s;color:var(--t)}
+.vhead{padding:12px 16px;background:#fff;border-bottom:1px solid var(--bd);flex-shrink:0}
+.vhead h2{font-size:17px;font-weight:700;letter-spacing:-.02em}
+.tools{display:flex;gap:8px;padding:10px 16px;flex-shrink:0;flex-wrap:nowrap;background:#fff;border-bottom:1px solid #f1f5f9}
+.tb{padding:9px 12px;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:transform .12s,background .15s;color:var(--t);flex-shrink:0}
 .tb:active{background:#f1f5f9;transform:scale(.96)}
-.search{flex:1;min-width:130px;padding:9px 14px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;background:#f8fafc}
-.pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;display:grid;grid-template-columns:repeat(2,1fr);gap:12px;align-content:start;min-height:0}
-.pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;border:1px solid #f1f5f9;transition:transform .12s;position:relative}
-.pc:active{transform:scale(.96)}
-.pc .ph{height:110px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden}
+.search{flex:1;min-width:0;padding:9px 14px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;background:#f8fafc;font-family:inherit}
+.search::placeholder{color:#94a3b8;opacity:1}
+.pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 20px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-content:start;min-height:0}
+.pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;border:1px solid #f1f5f9;transition:transform .12s,box-shadow .15s;position:relative;display:flex;flex-direction:column}
+.pc:active{transform:scale(.97)}
+.pc .ph{height:120px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden;flex-shrink:0}
 .pc .ph img{width:100%;height:100%;object-fit:cover}
 .pc .ph .ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center}
-.pc .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px 12px}
-.pc .pi{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 12px;min-height:48px}
+.pc .pi{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
 .pc .pp{font-size:14px;font-weight:700;color:var(--p);flex-shrink:0}
-.pc .oos{position:absolute;top:6px;left:6px;background:var(--r);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px}
-.tl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px;min-height:0}
+.pc .oos{position:absolute;top:8px;left:8px;background:var(--r);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px}
+.tl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 20px;min-height:0}
 .ti{background:var(--card);border-radius:12px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:var(--sh);cursor:pointer;transition:transform .12s}
 .ti:active{transform:scale(.98)}
 .ti .ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
@@ -119,7 +123,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 .calc-g .op{background:#eef2ff;color:var(--p)}.calc-g .eq{background:var(--p);color:#fff}.calc-g .ac{background:#fef2f2;color:var(--r)}
 .af{display:flex;flex-direction:column;gap:10px}
 .af label{font-size:12px;font-weight:600;color:var(--m)}
-.af input,.af select{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%}
+.af input,.af select{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%;font-family:inherit}
 .af input:focus,.af select:focus{border-color:var(--p)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .photo-preview{width:80px;height:80px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:4px;border:1px dashed var(--bd)}
@@ -164,14 +168,14 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
     </div>
     <section class="sec">
       <div class="sh"><h2>Recent Transactions</h2></div>
-      <div class="txl" id="txList"><div class="empty">No recent transactions yet — sales you make will show up here.</div></div>
+      <div class="txl" id="txList"><div class="empty">No recent transactions yet. Sales you make will show up here.</div></div>
     </section>
   </div>
 </div>
 <div class="view" id="v-text">
   <div class="vhead"><h2>Text POS</h2></div>
   <div class="tools">
-    <input class="search" id="tsSearch" placeholder="Search product…">
+    <input class="search" id="tsSearch" placeholder="Search product">
     <button class="tb" id="tsScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button>
   </div>
   <div class="tl" id="tsList"><div class="empty">Start typing to find a product</div></div>
@@ -179,7 +183,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Ro
 <div class="view" id="v-photo">
   <div class="vhead"><h2>Photo POS</h2></div>
   <div class="tools">
-    <input class="search" id="psSearch" placeholder="Search…">
+    <input class="search" id="psSearch" placeholder="Search">
     <button class="tb" id="psScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button>
   </div>
   <div class="pg" id="psGrid"></div>
@@ -304,7 +308,7 @@ $('#btnPlus').onclick=()=>{plusOpen=!plusOpen;$('#btnRec').classList.toggle('hid
 $('#btnBil').onclick=()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');showView('photo')};
 $('#btnRec').onclick=async()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');const list=(await all('transactions')).filter(t=>t.status==='unpaid');const box=$('#sheetUpB');
   let html='<div class="af" style="margin-bottom:14px;padding:12px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0"><label style="color:#047857">Miscellaneous receive (₹)</label><input id="miscAmt" type="number" min="1" placeholder="Enter amount" style="margin-top:6px"><button class="save" id="miscSave" style="margin-top:10px;background:var(--g)">Record Received</button></div>';
-  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>`<div class="sheet-item" data-id="${t.id}"><div class="si">${productIcon({})}</div><div class="sn">${t.title}<small>${t.subtitle||''}</small></div><div class="sp">${fmt(t.amount)}</div></div>`).join(''):'<div class="empty" style="padding:16px 0">No unpaid invoices — use form above for misc receive</div>';
+  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>`<div class="sheet-item" data-id="${t.id}"><div class="si">${productIcon({})}</div><div class="sn">${t.title}<small>${t.subtitle||''}</small></div><div class="sp">${fmt(t.amount)}</div></div>`).join(''):'<div class="empty" style="padding:16px 0">No unpaid invoices. Use the form above for misc receive.</div>';
   box.innerHTML=html;
   $('#miscSave').onclick=async()=>{const amt=+$('#miscAmt').value;if(!amt||amt<=0)return toast('Enter a valid amount');const tx={id:crypto.randomUUID(),title:'Miscellaneous',subtitle:`Received • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:amt,status:'paid',date:new Date().toISOString(),icon:'cart'};await put('transactions',tx);toast('Received '+fmt(amt));closeSheets();renderTx()};
   $$('#sheetUpB .sheet-item').forEach(el=>el.onclick=async()=>{const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');closeSheets();renderTx()});
@@ -327,7 +331,7 @@ $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
 
 /* ---------- catalog / cart ---------- */
-async function renderPhoto(q=''){const list=await all('products');const f=q?list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())):list;const g=$('#psGrid');if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet — add one from the menu</div>';return}g.innerHTML=f.map(p=>`<div class="pc" data-id="${p.id}">${(p.stock||0)<=0?'<div class="oos">Out of stock</div>':''}<div class="ph">${productIcon(p)}</div><div class="meta"><div class="pi">${p.name}</div><div class="pp">${fmt(p.price)}</div></div></div>`).join('');$$('.pc').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
+async function renderPhoto(q=''){const list=await all('products');const f=q?list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())):list;const g=$('#psGrid');if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet. Add one from the menu.</div>';return}g.innerHTML=f.map(p=>`<div class="pc" data-id="${p.id}">${(p.stock||0)<=0?'<div class="oos">Out of stock</div>':''}<div class="ph">${productIcon(p)}</div><div class="meta"><div class="pi">${p.name}</div><div class="pp">${fmt(p.price)}</div></div></div>`).join('');$$('.pc').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>toast('Barcode scanning coming soon');
 
 async function renderText(q){const box=$('#tsList');if(!q.trim()){box.innerHTML='<div class="empty">Start typing to find a product</div>';return}const list=await all('products');const f=list.filter(p=>p.name.toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase()));if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>`<div class="ti" data-id="${p.id}"><div class="ico">${productIcon(p)}</div><span>${p.name}${(p.stock||0)<=0?' · out of stock':''}</span><em>${fmt(p.price)}</em></div>`).join('');$$('.ti').forEach(c=>c.onclick=()=>addToCart(f.find(p=>p.id==c.dataset.id)))}
@@ -348,7 +352,7 @@ $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:c
 async function renderHeld(){const list=(await all('held')).sort((a,b)=>b.id-a.id);const box=$('#heldList');if(!list.length){box.innerHTML='<div class="empty">No held bills</div>';return}box.innerHTML=list.map(h=>`<div class="held" data-id="${h.id}"><div class="hr"><span>${h.items.reduce((a,c)=>a+c.qty,0)} item(s)</span><span>${fmt(h.total)}</span></div><div class="hs">Held ${new Date(h.date).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div><div class="hbtns"><button class="resume">Resume</button><button class="del">Delete</button></div></div>`).join('');$$('.held').forEach(el=>{const id=+el.dataset.id;const h=list.find(x=>x.id===id);el.querySelector('.resume').onclick=async()=>{cart=h.items;renderCartBar();await del('held',id);toast('Bill resumed');showView('home')};el.querySelector('.del').onclick=async()=>{await del('held',id);toast('Held bill deleted');renderHeld()}})}
 
 /* ---------- transactions ---------- */
-async function renderTx(){const list=await all('transactions');const box=$('#txList');if(!list.length){box.innerHTML='<div class="empty">No recent transactions yet — sales you make will show up here.</div>';return}list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));box.innerHTML=list.slice(0,20).map(t=>`<div class="tx" data-id="${t.id}"><div class="txi ${t.icon||'cart'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="txb"><div class="txt">${t.title}</div><div class="txs">${t.subtitle||''}</div></div><div class="txr"><div class="txa">${fmt(t.amount)}</div><span class="badge ${t.status}">${t.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('');$$('.tx').forEach(el=>el.onclick=async()=>{if(el.querySelector('.badge').classList.contains('unpaid')){const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');renderTx()}})}
+async function renderTx(){const list=await all('transactions');const box=$('#txList');if(!list.length){box.innerHTML='<div class="empty">No recent transactions yet. Sales you make will show up here.</div>';return}list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));box.innerHTML=list.slice(0,20).map(t=>`<div class="tx" data-id="${t.id}"><div class="txi ${t.icon||'cart'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="txb"><div class="txt">${t.title}</div><div class="txs">${t.subtitle||''}</div></div><div class="txr"><div class="txa">${fmt(t.amount)}</div><span class="badge ${t.status}">${t.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('');$$('.tx').forEach(el=>el.onclick=async()=>{if(el.querySelector('.badge').classList.contains('unpaid')){const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');renderTx()}})}
 
 (async()=>{await openDB();await seedProducts();await renderTx();await renderExStCounts()})();
 </script>
