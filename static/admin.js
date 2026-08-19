@@ -143,29 +143,32 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup with Web Share ---------- */
-async function doBackup(){
+/* ---------- Backup ---------- */
+async function _backupBlob(){
   const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance:await all('finance').catch(()=>[])};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
-  const filename='ATOM-backup-'+d+'.json';
+  return {blob,filename:'ATOM-backup-'+d+'.json'};
+}
+async function doDownload(){
+  const {blob,filename}=await _backupBlob();
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download=filename;link.click();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+}
+async function doShare(){
+  const {blob,filename}=await _backupBlob();
   const file=new File([blob],filename,{type:'application/json'});
-  let shared=false;
   try{
     if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'ATOM POS Backup',text:'Database backup — open with WhatsApp to send'});
-      shared=true;
+      await navigator.share({files:[file],title:'ATOM POS Backup',text:'Database backup'});
+      toast('Share sheet opened');
     }else if(navigator.share){
       await navigator.share({title:'ATOM POS Backup',text:'ATOM backup '+filename});
-      shared=true;
-    }
-  }catch(e){if(e&&e.name==='AbortError')return}
-  if(!shared){
-    const url=URL.createObjectURL(blob);
-    const link=document.createElement('a');link.href=url;link.download=filename;link.click();
-    URL.revokeObjectURL(url);
-  }
-  toast(shared?'Share sheet opened — pick WhatsApp':'Backup downloaded');
+      toast('Share sheet opened');
+    }else{toast('Share not supported — use Download');doDownload()}
+  }catch(e){if(e&&e.name!=='AbortError')toast('Share failed')}
 }
 
 async function doRestore(file){
@@ -621,7 +624,8 @@ async function renderBarcodes(){
     };
   });
   try{await openDB();await refresh()}catch(e){console.error(e)}
-  if($('#btnBackup'))$('#btnBackup').onclick=doBackup;
+  if($('#btnDownload'))$('#btnDownload').onclick=doDownload;
+  if($('#btnShare'))$('#btnShare').onclick=doShare;
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();
   if($('#restoreFile'))$('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
   if($('#btnImportCsv'))$('#btnImportCsv').onclick=()=>$('#importFile').click();
