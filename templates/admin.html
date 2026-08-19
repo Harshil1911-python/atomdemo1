@@ -135,12 +135,12 @@
     <!-- Database -->
     <div class="panel-view" id="viewDatabase">
       <div class="sec-title">Database</div>
-      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Backup includes products (with photos), transactions, held bills, variants and purchases.</p>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Full offline backup of this device: products with photos, clients, invoices, branding, tax, stock and more. User passwords are never included. Prefer ZIP for full restore.</p>
       <div class="actions" style="flex-direction:column;align-items:stretch;gap:8px">
-        <button class="btn btn-p" id="btnDownload">Download Backup</button>
+        <button class="btn btn-p" id="btnDownload">Download backup ZIP</button>
         <button class="btn btn-g" id="btnShare">Share Backup</button>
         <button class="btn" id="btnRestore">Restore Backup</button>
-        <input type="file" id="restoreFile" class="hidden-file" accept=".json,application/json">
+        <input type="file" id="restoreFile" class="hidden-file" accept=".zip,.json,application/zip,application/json">
       </div>
       <div class="sec-title" style="margin-top:8px">Import Excel / CSV</div>
       <div class="fmt-box">

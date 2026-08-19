@@ -143,79 +143,67 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup (Orbit-style share) ---------- */
+/* ---------- Backup / Share (system sheet + ZIP) ---------- */
 function _capPlugin(n){try{return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n]}catch(e){return null}}
 function _isNative(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}}
 function _blobB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const i=s.indexOf(',');res(i>=0?s.slice(i+1):s)};r.onerror=rej;r.readAsDataURL(blob)})}
+function _u16(n){return new Uint8Array([n&255,(n>>8)&255])}
+function _u32(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255])}
+function _zipStore(name,str){ // uncompressed single-file ZIP
+  const enc=new TextEncoder(),nameB=enc.encode(name),data=enc.encode(str),crc=0; // CRC optional for simple readers
+  const local=new Uint8Array([...[0x50,0x4b,0x03,0x04],..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),...nameB,...data]);
+  const central=new Uint8Array([...[0x50,0x4b,0x01,0x02],..._u16(20),..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(0),...nameB]);
+  const end=new Uint8Array([...[0x50,0x4b,0x05,0x06],..._u16(0),..._u16(0),..._u16(1),..._u16(1),..._u32(central.length),..._u32(local.length),..._u16(0)]);
+  return new Blob([local,central,end],{type:'application/zip'});
+}
 async function _backupBlob(){
   const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance:await all('finance').catch(()=>[])};
-  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
-  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
-  return {blob,filename:'ATOM-backup-'+d+'.json'};
+  const json=JSON.stringify(data);
+  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/[\/,\s:]+/g,'-');
+  const filename='ATOM-backup-'+d+'.zip';
+  return {blob:_zipStore('backup.json',json),filename,json};
 }
 function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{try{URL.revokeObjectURL(url);a.remove()}catch(e){}},1500)}
 async function _nativeShareFile(blob,filename,opts){
-  opts=opts||{};
-  const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
-  if(!FS||!FS.writeFile)return false;
-  const b64=await _blobB64(blob);
-  const tryDirs=['CACHE','DATA','DOCUMENTS','EXTERNAL'];
-  let uri=null;
-  for(const dir of tryDirs){
-    for(const path of ['ATOM/'+filename,filename]){
-      try{
-        await FS.writeFile({path,data:b64,directory:dir,recursive:true});
-        const u=await FS.getUri({path,directory:dir});
-        uri=(u&&(u.uri||u))||null;
-        if(uri)break;
-      }catch(e){}
-    }
-    if(uri)break;
-  }
+  opts=opts||{};const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');if(!FS||!FS.writeFile)return false;
+  const b64=await _blobB64(blob);let uri=null;
+  for(const dir of ['CACHE','DATA','DOCUMENTS','EXTERNAL']){for(const path of ['ATOM/'+filename,filename]){try{await FS.writeFile({path,data:b64,directory:dir,recursive:true});const u=await FS.getUri({path,directory:dir});uri=(u&&(u.uri||u))||null;if(uri)break}catch(e){}}if(uri)break}
   if(!uri||!Share||!Share.share)return false;
   try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,files:[uri],dialogTitle:opts.dialogTitle||'Share backup'});return true}
   catch(e){try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,dialogTitle:opts.dialogTitle||'Share backup'});return true}catch(e2){return false}}
 }
-async function doDownload(){
-  try{const {blob,filename}=await _backupBlob();_dlBlob(blob,filename);toast('Backup downloaded')}catch(e){toast('Download failed')}
-}
+async function doDownload(){try{const {blob,filename}=await _backupBlob();_dlBlob(blob,filename);toast('Backup downloaded')}catch(e){toast('Download failed')}}
 async function doShare(){
   try{
     const {blob,filename}=await _backupBlob();
-    const title='ATOM POS Backup',text='ATOM database backup · '+filename;
-    const file=new File([blob],filename,{type:'application/json'});
-    // Same share path as quotations: open system sheet first
+    const title='ATOM POS Backup',text='Full offline backup · '+filename;
+    const file=new File([blob],filename,{type:'application/zip'});
     if(navigator.share){
-      try{
-        if(!navigator.canShare||navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title,text});
-          toast('Share sheet opened');return;
-        }
-      }catch(e){if(e&&e.name==='AbortError')return}
-      try{await navigator.share({title,text});toast('Share sheet opened');return}catch(e){if(e&&e.name==='AbortError')return}
+      try{if(!navigator.canShare||navigator.canShare({files:[file]})){await navigator.share({files:[file],title,text});toast('Share sheet opened');return}}
+      catch(e){if(e&&e.name==='AbortError')return}
+      try{await navigator.share({title,text,files:[file]});toast('Share sheet opened');return}catch(e){if(e&&e.name==='AbortError')return}
     }
     if(_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share backup'})){toast('Share sheet opened');return}
     _dlBlob(blob,filename);toast('Backup downloaded');
   }catch(e){toast('Share failed — try Download')}
 }
-
+async function _parseBackupFile(file){
+  const buf=await file.arrayBuffer(),u=new Uint8Array(buf);
+  if(u[0]===0x50&&u[1]===0x4b){ // ZIP: find first local file data after name
+    const nameLen=u[26]|(u[27]<<8),extra=u[28]|(u[29]<<8),start=30+nameLen+extra,size=(u[22]|(u[23]<<8)|(u[24]<<16)|(u[25]<<24));
+    return JSON.parse(new TextDecoder().decode(u.slice(start,start+size)));
+  }
+  return JSON.parse(await file.text());
+}
 async function doRestore(file){
   try{
-    const data=JSON.parse(await file.text());
+    const data=await _parseBackupFile(file);
     if(!data||!Array.isArray(data.products))return toast('Invalid backup file');
     if(!(await appConfirm('Restore','This will replace all current data. Continue?','Restore',true)))return;
-    await clearStore('products');await clearStore('transactions');await clearStore('held');
-    try{await clearStore('variants')}catch(e){}
-    try{await clearStore('purchases')}catch(e){}
-    try{await clearStore('suppliers')}catch(e){}
-    try{await clearStore('coupons')}catch(e){}
-    for(const x of (data.products||[])){const copy=Object.assign({},x);delete copy.id;await put('products',copy)}
+    for(const s of ['products','transactions','held','variants','purchases','suppliers','coupons','parties','quotations','pricelists','finance'])try{await clearStore(s)}catch(e){}
+    for(const x of (data.products||[])){const c=Object.assign({},x);delete c.id;await put('products',c)}
     for(const x of (data.transactions||[]))await put('transactions',x);
-    for(const x of (data.held||[])){const copy=Object.assign({},x);delete copy.id;await put('held',copy)}
-    for(const x of (data.variants||[])){const copy=Object.assign({},x);delete copy.id;await put('variants',copy)}
-    for(const x of (data.purchases||[])){const copy=Object.assign({},x);delete copy.id;await put('purchases',copy)}
-    for(const x of (data.suppliers||[])){const copy=Object.assign({},x);delete copy.id;await put('suppliers',copy)}
-    for(const x of (data.coupons||[])){const copy=Object.assign({},x);delete copy.id;await put('coupons',copy)}
+    for(const s of ['held','variants','purchases','suppliers','coupons','parties','quotations','pricelists','finance'])for(const x of (data[s]||[])){const c=Object.assign({},x);delete c.id;await put(s,c)}
     toast('Restore complete');refresh();showAdminView('#viewMain');
   }catch(e){toast('Restore failed')}
 }
