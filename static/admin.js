@@ -21,7 +21,7 @@ function renderSessions(){
 async function refresh(){
   const list=await all('products'),total=list.length,out=list.filter(p=>(p.stock||0)<=0).length;
   const inv=list.reduce((a,p)=>a+(p.price||0)*Math.max(0,p.stock||0),0);
-  $('#sTotal').textContent=total;$('#sIn').textContent=total-out;$('#sOut').textContent=out;$('#sVal').textContent=fmt(inv);
+  if($('#sTotal'))$('#sTotal').textContent=total;if($('#sIn'))$('#sIn').textContent=total-out;if($('#sOut'))$('#sOut').textContent=out;if($('#sVal'))$('#sVal').textContent=fmt(inv);
   const txs=await all('transactions');
   const dayStart=new Date();dayStart.setHours(0,0,0,0);
   let todaySale=0,totalSale=0,unpaidAmt=0,paidCnt=0;

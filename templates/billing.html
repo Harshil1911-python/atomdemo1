@@ -188,7 +188,9 @@
   <button class="save" id="cartViewToSale" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:12px;font-family:inherit">Continue to Sale</button>
 </div></div></div>
 <div class="modal" id="coM"><div class="mbox"><div class="mhd">Sale <button id="coX">×</button></div><div class="mbd">
-  <input class="search" id="coName" placeholder="Customer name (optional)" style="margin-bottom:10px;width:100%">
+  <input class="search" id="coName" placeholder="Search or type customer" style="margin-bottom:6px;width:100%" autocomplete="off">
+  <div id="coCustList" style="max-height:120px;overflow-y:auto;margin-bottom:8px"></div>
+  <input type="hidden" id="coPartyId" value="">
   <div id="coItems"></div>
   <div class="co-total"><span>Total</span><span id="coTotal">₹0</span></div>
   <div class="seg" id="coSeg"><button class="on" data-s="paid">Paid now</button><button data-s="unpaid">Unpaid / Credit</button></div>
@@ -284,13 +286,44 @@ async function runMore(a){
   }
   if(a==='purret'||a==='saleret'){
     const isSale=a==='saleret';
-    openAct(isSale?'Sales return':'Purchase return',`<div class="af"><label>Product *</label><select id="retProd">${await productOptions()}</select><label>Qty *</label><input id="retQty" type="number" min="1" value="1"><label>Note</label><input id="retNote" placeholder="Optional"><button class="save" id="retSave" type="button">Confirm return</button></div>`);
+    openAct(isSale?'Sales return':'Purchase return',`<div class="af">
+      <label>Search product *</label><input id="retSearch" placeholder="Type product name" autocomplete="off">
+      <div id="retPicks"></div>
+      <input type="hidden" id="retProd" value="">
+      <label>Qty *</label><input id="retQty" type="number" min="1" value="1">
+      <label>Inventory</label><select id="retInv"><option value="auto">Auto (sales + / purchase −)</option><option value="add">Add to inventory</option><option value="deduct">Deduct from inventory</option><option value="none">No stock change</option></select>
+      <label>Party (optional)</label><input id="retPartyQ" placeholder="Search party" autocomplete="off"><div id="retPartyPicks"></div><input type="hidden" id="retPartyId" value="">
+      <label>Party credit</label><select id="retCredit"><option value="none">No credit change</option><option value="add">Add party credit</option><option value="deduct">Deduct party credit</option></select>
+      <label>Note</label><input id="retNote" placeholder="Optional">
+      <button class="save" id="retSave" type="button">Confirm return</button></div>`);
+    let _retList=[];
+    const fillP=async q=>{
+      _retList=await all('products');const qq=(q||'').toLowerCase();
+      const f=qq?_retList.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)):[];
+      $('#retPicks').innerHTML=f.slice(0,8).map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>Stock '+(p.stock||0)+' · '+fmt(p.price)+'</small></button>').join('')||(qq?'<div class="empty" style="padding:6px">No match</div>':'');
+      $$('#retPicks .pick').forEach(btn=>btn.onclick=()=>{$('#retProd').value=btn.dataset.id;$$('#retPicks .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');$('#retSearch').value=btn.textContent.split('\n')[0]});
+    };
+    $('#retSearch').oninput=e=>fillP(e.target.value);
+    const fillParty=async q=>{
+      const qq=(q||'').toLowerCase();let list=await all('parties');
+      if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq));
+      $('#retPartyPicks').innerHTML=list.slice(0,6).map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>Credit ₹'+(p.credit||0)+'</small></button>').join('');
+      $$('#retPartyPicks .pick').forEach(btn=>btn.onclick=()=>{$('#retPartyId').value=btn.dataset.id;$$('#retPartyPicks .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');$('#retPartyQ').value=btn.textContent.split('\n')[0]});
+    };
+    $('#retPartyQ').oninput=e=>fillParty(e.target.value);
     $('#retSave').onclick=async()=>{
-      const pid=+$('#retProd').value,qty=+$('#retQty').value;if(!pid||!(qty>0))return toast('Product & qty required');
+      const pid=+$('#retProd').value,qty=+$('#retQty').value;if(!pid||!(qty>0))return toast('Select product & qty');
       const pr=await getById('products',pid);if(!pr)return toast('Not found');
+      const inv=$('#retInv').value,cred=$('#retCredit').value,partyId=+$('#retPartyId').value||null;
       const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
-      if(isSale){pr.stock=(pr.stock||0)+qty;await put('products',pr);const amt=(+pr.price||0)*qty;await put('finance',{type:'payment',direction:'out',amount:amt,note:'Sales return · '+pr.name+' x'+qty,at:now.toISOString(),ist});await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:pr.name+' × '+qty,amount:-amt,status:'paid',date:now.toISOString(),icon:'cart',items:[{id:pid,name:pr.name,price:pr.price,qty}]});}
-      else{pr.stock=Math.max(0,(pr.stock||0)-qty);await put('products',pr);const amt=(+pr.cost||+pr.price||0)*qty;await put('finance',{type:'payment',direction:'in',amount:amt,note:'Purchase return · '+pr.name+' x'+qty,at:now.toISOString(),ist});}
+      const amt=(isSale?(+pr.price||0):(+pr.cost||+pr.price||0))*qty;
+      let stockMode=inv;if(stockMode==='auto')stockMode=isSale?'add':'deduct';
+      if(stockMode==='add')pr.stock=(pr.stock||0)+qty;
+      if(stockMode==='deduct')pr.stock=Math.max(0,(pr.stock||0)-qty);
+      if(stockMode!=='none')await put('products',pr);
+      if(partyId&&cred!=='none'){const pt=await getById('parties',partyId);if(pt){pt.credit=Math.max(0,(+pt.credit||0)+(cred==='add'?amt:-amt));await put('parties',pt)}}
+      if(isSale){await put('finance',{type:'payment',direction:'out',amount:amt,note:'Sales return · '+pr.name+' x'+qty,at:now.toISOString(),ist});await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:pr.name+' × '+qty,amount:-amt,status:'paid',date:now.toISOString(),icon:'cart',items:[{id:pid,name:pr.name,price:pr.price,qty}]});}
+      else{await put('finance',{type:'payment',direction:'in',amount:amt,note:'Purchase return · '+pr.name+' x'+qty,at:now.toISOString(),ist})}
       $('#actM').classList.remove('on');toast('Return recorded');try{await renderTx();await renderExStCounts()}catch(e){}
     };
     return;
@@ -446,7 +479,24 @@ function renderCartBar(){const n=cart.reduce((a,c)=>a+c.qty,0),total=cart.reduce
 
 function renderCoItems(){$('#coItems').innerHTML=cart.map((c,i)=>`<div class="co-item"><span>${c.name}</span><div class="qtybox"><button data-i="${i}" data-d="-1">−</button>${c.qty}<button data-i="${i}" data-d="1">+</button></div><b>${fmt(c.qty*c.price)}</b></div>`).join('');$('#coTotal').textContent=fmt(cart.reduce((a,c)=>a+c.qty*c.price,0));$$('#coItems button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;cart[i].qty+=+b.dataset.d;if(cart[i].qty<=0)cart.splice(i,1);renderCoItems();renderCartBar();if(!cart.length){$('#coM').classList.remove('on');$('#coCart').classList.remove('on')}})}
 function renderCartView(){$('#cartViewItems').innerHTML=cart.map((c,i)=>`<div class="co-item"><span>${c.name}</span><div class="qtybox"><button data-i="${i}" data-d="-1">−</button>${c.qty}<button data-i="${i}" data-d="1">+</button></div><b>${fmt(c.qty*c.price)}</b></div>`).join('');$('#cartViewTotal').textContent=fmt(cart.reduce((a,c)=>a+c.qty*c.price,0));$$('#cartViewItems button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;cart[i].qty+=+b.dataset.d;if(cart[i].qty<=0)cart.splice(i,1);renderCartView();renderCartBar();if(!cart.length)$('#coCart').classList.remove('on')})}
-function openSale(){$('#coName').value='';payStatus='paid';$$('#coSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s==='paid'));renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on')}
+
+async function renderCustPicks(q){
+  const box=$('#coCustList');if(!box)return;
+  const qq=(q||'').trim().toLowerCase();
+  let list=await all('parties');
+  list=list.filter(p=>(p.type||'customer')!=='supplier');
+  if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));
+  list=list.slice(0,8);
+  if(!list.length){box.innerHTML=qq?'<div class="empty" style="padding:8px">No match — new name will be used</div>':'';return}
+  box.innerHTML=list.map(p=>'<button type="button" class="pick" data-id="'+p.id+'" data-name="'+String(p.name||'').replace(/"/g,'&quot;')+'">'+p.name+(p.phone?'<small>'+p.phone+' · credit ₹'+(p.credit||0)+'</small>':'')+'</button>').join('');
+  $$('#coCustList .pick').forEach(btn=>btn.onclick=()=>{
+    $$('#coCustList .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
+    $('#coName').value=btn.dataset.name;$('#coPartyId').value=btn.dataset.id;box.innerHTML='';
+  });
+}
+if($('#coName')){$('#coName').oninput=e=>{renderCustPicks(e.target.value);$('#coPartyId').value=''};$('#coName').onfocus=e=>renderCustPicks(e.target.value)}
+
+function openSale(){$('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustList'))$('#coCustList').innerHTML='';payStatus='paid';$$('#coSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s==='paid'));renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on')}
 
 $('#btnCheckout').onclick=()=>{if(!cart.length)return;$('#coChoice').classList.add('on')};
 $('#coChoiceX').onclick=()=>$('#coChoice').classList.remove('on');
@@ -456,7 +506,7 @@ $('#coCartX').onclick=()=>$('#coCart').classList.remove('on');
 $('#cartViewToSale').onclick=openSale;
 $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b))};
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0),name=$('#coName').value.trim(),list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0);let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
