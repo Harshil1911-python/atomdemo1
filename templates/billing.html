@@ -55,11 +55,11 @@
 .tb:active{background:#f1f5f9}.search{flex:1;min-width:0;padding:9px 14px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;background:#f8fafc;font-family:inherit}
 .search::placeholder{color:#94a3b8}
 .pg{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-content:start;min-height:0}
-.pc{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;border:1px solid #f1f5f9;display:flex;flex-direction:column}
-.pc:active{transform:scale(.97)}.pc .ph{height:120px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden}
+.pc{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.08);cursor:pointer;border:1px solid #e2e8f0;display:flex;flex-direction:column;min-height:168px}
+.pc:active{transform:scale(.97)}.pc .ph{height:120px;min-height:120px;display:flex;align-items:center;justify-content:center;background:#f1f5f9;overflow:hidden;flex-shrink:0}
 .pc .ph img{width:100%;height:100%;object-fit:cover}.pc .ph .ico{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center}
 .pc .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px 12px;min-height:48px}
-.pc .pi{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .pn{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pc .pp{font-size:14px;font-weight:700;color:var(--p);flex-shrink:0}
 .pc .oos{position:absolute;top:8px;left:8px;background:var(--r);color:#fff;font-size:10px;font-weight:700;padding:3px 7px;border-radius:6px}.pc{position:relative}
 .tl{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 20px;min-height:0}
@@ -113,7 +113,7 @@
 </header>
 <div class="ov" id="ov"></div>
 <aside class="dr" id="dr">
-  <div class="dh"><div class="dh-text"><h1>ATOM POS</h1><p>Fast billing for your store</p><p>Products stock and sales in one place</p><p>Works offline on your phone</p></div><img class="dh-logo" src="/static/logo-white.png" alt="ATOM"></div>
+  <div class="dh"><div class="dh-text"><h1>ATOM POS</h1><p>Advance Transactions &amp; Operations Management</p></div><img class="dh-logo" src="/static/logo-white.png" alt="ATOM"></div>
   <div class="db" id="drawerBody"></div>
 </aside>
 <div class="col">
@@ -200,7 +200,7 @@ function showView(v){
   $$('.view').forEach(e=>e.classList.remove('on'));$(`#v-${v}`).classList.add('on');
   $$('.nav').forEach(n=>n.classList.toggle('on',n.dataset.v===v));
   $('#fabWrap').style.display=v==='home'?'flex':'none';
-  if(v==='photo')renderPhoto();if(v==='text')renderText('');if(v==='held')renderHeld();
+  if(v==='photo')renderPhoto('');if(v==='text')renderText('');if(v==='held')renderHeld();
 }
 $$('.nav').forEach(n=>n.onclick=()=>showView(n.dataset.v));
 
@@ -229,7 +229,47 @@ $('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
 
-async function renderPhoto(q=''){const list=await all('products');const f=q?list.filter(p=>(p.name||'').toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())||(p.barcode||'').includes(q)):list;const g=$('#psGrid');if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet. Add one from Admin.</div>';return}g.innerHTML=f.map(p=>`<div class="pc" data-id="${p.id}">${(p.stock||0)<=0?'<div class="oos">Out of stock</div>':''}<div class="ph">${productIcon(p)}</div><div class="meta"><div class="pi">${p.name}</div><div class="pp">${fmt(p.price)}</div></div></div>`).join('');$$('.pc').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
+async function renderPhoto(q=''){
+  const g=$('#psGrid');
+  if(!g)return;
+  g.innerHTML='<div class="empty" style="grid-column:1/-1">Loading…</div>';
+  try{
+    await openDB();
+    let list=await all('products');
+    if(!Array.isArray(list))list=[];
+    const qq=(q||'').toLowerCase().trim();
+    const f=qq?list.filter(p=>{
+      const n=(p.name||'').toLowerCase(),c=(p.cat||'').toLowerCase(),b=String(p.barcode||'');
+      return n.includes(qq)||c.includes(qq)||b.includes(qq);
+    }):list.slice();
+    f.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet. Add from Admin.</div>';return;}
+    const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    g.innerHTML=f.map(p=>{
+      const id=p.id;
+      const name=esc(p.name||'Item');
+      const price=fmt(p.price);
+      const oos=(+p.stock||0)<=0?'<div class="oos">Out of stock</div>':'';
+      let thumb='';
+      if(p.photo&&String(p.photo).startsWith('data:')){
+        thumb='<img src="'+String(p.photo).replace(/"/g,'')+'" alt="" loading="lazy">';
+      }else{
+        const col=(p.color||'#dbeafe');
+        thumb='<div class="ico" style="background:'+col+'"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>';
+      }
+      return '<div class="pc" data-id="'+id+'">'+oos+'<div class="ph">'+thumb+'</div><div class="meta"><div class="pn">'+name+'</div><div class="pp">'+price+'</div></div></div>';
+    }).join('');
+    $$('.pc').forEach(c=>{
+      c.onclick=()=>{
+        const prod=f.find(x=>+x.id===+c.dataset.id);
+        if(prod)selectProduct(prod);
+      };
+    });
+  }catch(err){
+    g.innerHTML='<div class="empty" style="grid-column:1/-1">Could not load products. Pull to refresh.</div>';
+    console.error(err);
+  }
+}
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>toast('Barcode scanning coming soon');
 async function renderText(q){const box=$('#tsList');if(!q.trim()){box.innerHTML='<div class="empty">Start typing to find a product</div>';return}const list=await all('products');const f=list.filter(p=>(p.name||'').toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())||(p.barcode||'').includes(q));if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>`<div class="ti" data-id="${p.id}"><div class="ico">${productIcon(p)}</div><span>${p.name}${(p.stock||0)<=0?' · out of stock':''}</span><em>${fmt(p.price)}</em></div>`).join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
 $('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>toast('Barcode scanning coming soon');
@@ -251,7 +291,7 @@ $('#coCartX').onclick=()=>$('#coCart').classList.remove('on');
 $('#cartViewToSale').onclick=openSale;
 $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b))};
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0),name=$('#coName').value.trim(),list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart'});const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0),name=$('#coName').value.trim(),list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 

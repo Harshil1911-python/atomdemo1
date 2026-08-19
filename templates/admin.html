@@ -53,6 +53,12 @@
 .af textarea{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%;font-family:inherit;resize:vertical;min-height:60px}
 .af textarea:focus{border-color:var(--p)}
 .edit-hint{font-size:11px;color:var(--m);margin-bottom:8px;font-weight:500}
+.insight{background:var(--card);border-radius:12px;padding:14px;margin-bottom:10px;box-shadow:var(--sh);border:1px solid #f1f5f9}
+.insight .il{font-size:11px;font-weight:600;color:var(--m);text-transform:uppercase;letter-spacing:.04em}
+.insight .iv{font-size:15px;font-weight:700;margin-top:6px;line-height:1.35}
+.bulk-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f1f5f9}
+.bulk-row input[type=number]{width:72px;padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-family:inherit}
+.bulk-row .bn{flex:1;font-size:13px;font-weight:600;min-width:0}
 </style></head><body>
 <div class="app">
 <header class="top">
@@ -60,7 +66,7 @@
   <div class="top-r"><button class="ib" id="btnMenu" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button></div>
 </header>
 <div class="ov" id="ov"></div>
-<aside class="dr" id="dr"><div class="dh"><div class="dh-text"><h1>ATOM POS</h1><p>Fast billing for your store</p><p>Products stock and sales in one place</p><p>Works offline on your phone</p></div><img class="dh-logo" src="/static/logo-white.png" alt="ATOM"></div><div class="db" id="drawerBody"></div></aside>
+<aside class="dr" id="dr"><div class="dh"><div class="dh-text"><h1>ATOM POS</h1><p>Advance Transactions &amp; Operations Management</p></div><img class="dh-logo" src="/static/logo-white.png" alt="ATOM"></div><div class="db" id="drawerBody"></div></aside>
 <div class="col">
   <div class="vhead"><h2 id="pageTitle">Admin</h2><p id="pageSub">Catalog, stock and store controls</p></div>
   <div class="scroll">
@@ -72,12 +78,13 @@
         <div class="stat red"><div class="lbl">Out of stock</div><div class="val" id="sOut">0</div></div>
         <div class="stat"><div class="lbl">Inventory value</div><div class="val" id="sVal" style="font-size:16px">Rs 0</div></div>
       </div>
-      <div class="actions">
-        <button class="btn btn-p" id="btnAdd">+ Add Product</button>
-        <button class="btn btn-d" id="btnErase">Erase All Data</button>
-      </div>
-      <div class="sec-title">All products <span style="font-weight:500;color:var(--m);font-size:12px">(tap to edit)</span></div>
-      <div class="plist" id="plist"><div class="empty">No products yet. Tap Add Product.</div></div>
+      <div class="sec-title">Insights</div>
+      <div class="insight"><div class="il">Most selling product</div><div class="iv" id="mostSell">—</div></div>
+      <div class="insight"><div class="il">Most spending customer</div><div class="iv" id="mostCust">—</div></div>
+      <div class="insight"><div class="il">Fastest moving product</div><div class="iv" id="mostFast">—</div></div>
+      <div class="plist" id="plist" style="display:none"></div>
+      <button type="button" class="btn btn-p" id="btnAdd" style="display:none" aria-hidden="true"></button>
+      <button type="button" class="btn btn-d" id="btnErase" style="display:none" aria-hidden="true"></button>
     </div>
 
     <!-- Database -->
@@ -126,23 +133,30 @@ Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
     <!-- Inventory -->
     <div class="panel-view" id="viewInventory">
       <div class="sec-title">Inventory Management</div>
-      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Adjust stock quantities. Low stock items are highlighted.</p>
+      <p style="font-size:13px;color:var(--m);margin-bottom:10px;font-weight:500">Adjust stock one-by-one or bulk edit below.</p>
       <div class="chip-row" id="invFilter">
         <button class="chip on" data-f="all">All</button>
         <button class="chip" data-f="low">Low stock</button>
         <button class="chip" data-f="out">Out of stock</button>
+      </div>
+      <div class="actions" style="margin:10px 0">
+        <button class="btn btn-p" type="button" id="btnBulkSave">Save bulk stock</button>
       </div>
       <div id="invList"><div class="empty">No products.</div></div>
     </div>
 
     <!-- Purchase -->
     <div class="panel-view" id="viewPurchase">
-      <div class="sec-title">Purchase Management</div>
-      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Record purchases to increase stock and track supplier buys.</p>
-      <div class="actions">
-        <button class="btn btn-p" id="btnAddPurchase">+ Record Purchase</button>
+      <div class="sec-title">Purchase Orders</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:10px;font-weight:500">Create POs — stock and finance ledger update on receive.</p>
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat"><div class="lbl">PO spend</div><div class="val" id="poSpend" style="font-size:16px">₹0</div></div>
+        <div class="stat green"><div class="lbl">Finance out</div><div class="val" id="finOut" style="font-size:16px">₹0</div></div>
       </div>
-      <div id="purList"><div class="empty">No purchases recorded yet.</div></div>
+      <div class="actions">
+        <button class="btn btn-p" id="btnAddPurchase" type="button">+ New Purchase Order</button>
+      </div>
+      <div id="purList"><div class="empty">No purchase orders yet.</div></div>
     </div>
   </div>
 </div>
@@ -191,6 +205,7 @@ Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
       <div class="row2"><div><label>Qty *</label><input id="purQty" type="number" placeholder="0" min="1"></div><div><label>Cost / unit (Rs)</label><input id="purCost" type="number" placeholder="0" min="0" step="0.01"></div></div>
       <label>Supplier</label><input id="purSupplier" placeholder="Supplier name">
       <label>Invoice / Ref</label><input id="purRef" placeholder="Optional">
+      <label>Status</label><select id="purStatus"><option value="received">Received (stock + finance)</option><option value="ordered">Ordered (pending)</option></select>
       <label>Notes</label><textarea id="purNotes" placeholder="Optional"></textarea>
       <button class="save" id="purSave">Save Purchase</button>
     </div></div>

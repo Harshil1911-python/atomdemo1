@@ -22,27 +22,42 @@ async function refresh(){
   const list=await all('products'),total=list.length,out=list.filter(p=>(p.stock||0)<=0).length;
   const inv=list.reduce((a,p)=>a+(p.price||0)*Math.max(0,p.stock||0),0);
   $('#sTotal').textContent=total;$('#sIn').textContent=total-out;$('#sOut').textContent=out;$('#sVal').textContent=fmt(inv);
+  // Insights from transactions
+  const txs=await all('transactions');
+  const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
+  // Prefer items array if present
+  const byProd={}, byCust={};
+  for(const tx of txs){
+    const cust=(tx.title&&tx.title!=='Cash Sale')?tx.title:'Walk-in';
+    byCust[cust]=(byCust[cust]||0)+(+tx.amount||0);
+    if(Array.isArray(tx.items)){
+      for(const it of tx.items){
+        const n=it.name||('#'+it.id);
+        byProd[n]=(byProd[n]||0)+(+it.qty||1);
+      }
+    }
+  }
+  const topP=Object.entries(byProd).sort((a,b)=>b[1]-a[1])[0];
+  const topC=Object.entries(byCust).sort((a,b)=>b[1]-a[1])[0];
+  // Fast moving = highest qty sold in last 14 days if dated
+  const cut=Date.now()-14*864e5;
+  const fast={};
+  for(const tx of txs){
+    if(tx.date&&new Date(tx.date).getTime()<cut)continue;
+    if(Array.isArray(tx.items))for(const it of tx.items){const n=it.name||('#'+it.id);fast[n]=(fast[n]||0)+(+it.qty||1)}
+  }
+  const topF=Object.entries(fast).sort((a,b)=>b[1]-a[1])[0]||topP;
+  if($('#mostSell'))$('#mostSell').textContent=topP?(topP[0]+' · '+topP[1]+' sold'):'No sales data yet';
+  if($('#mostCust'))$('#mostCust').textContent=topC?(topC[0]+' · '+fmt(topC[1])):'No customer data yet';
+  if($('#mostFast'))$('#mostFast').textContent=topF?(topF[0]+' · '+topF[1]+' units'):'No movement data yet';
+  // Keep hidden plist for all-products menu (still usable)
   const box=$('#plist');
-  if(!list.length){box.innerHTML='<div class="empty">No products yet. Tap Add Product.</div>';return}
-  list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-  box.innerHTML=list.map(p=>{
-    const low=(p.minStock||0)>0&&(p.stock||0)<=(p.minStock||0);
-    const meta=(p.cat||'General')+' · Stock '+(p.stock||0)+(p.unit?' '+p.unit:'')+(low?' · Low':'');
-    return '<div class="pi" data-id="'+p.id+'"><div class="thumb">'+productIcon(p)+'</div><div class="info"><div class="name">'+esc(p.name)+'</div><div class="meta">'+esc(meta)+'</div></div><div class="price">'+fmt(p.price)+'</div><button class="del" title="Delete" type="button">×</button></div>';
-  }).join('');
-  $$('.pi .del').forEach(b=>b.onclick=async e=>{
-    e.stopPropagation();
-    if(!(await appConfirm('Delete','Delete this product?','Delete',true)))return;
-    await del('products',+b.closest('.pi').dataset.id);
-    toast('Product deleted');refresh();
-  });
-  $$('.pi').forEach(row=>{
-    row.onclick=async e=>{
-      if(e.target.closest('.del'))return;
-      const p=await getById('products',+row.dataset.id);
-      if(p)openProductModal(p);
-    };
-  });
+  if(box){
+    list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    box.innerHTML=list.map(p=>'<div class="pi" data-id="'+p.id+'"><div class="thumb">'+productIcon(p)+'</div><div class="info"><div class="name">'+esc(p.name)+'</div><div class="meta">'+(p.cat||'General')+' · Stock '+(p.stock||0)+'</div></div><div class="price">'+fmt(p.price)+'</div><button class="del" type="button">×</button></div>').join('')||'<div class="empty">No products</div>';
+    $$('.pi .del').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!(await appConfirm('Delete','Delete this product?','Delete',true)))return;await del('products',+b.closest('.pi').dataset.id);toast('Deleted');refresh()});
+    $$('.pi').forEach(row=>{row.onclick=e=>{if(e.target.closest('.del'))return;const id=+row.dataset.id;const prod=list.find(x=>+x.id===id);if(prod)openProductModal(prod)}});
+  }
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
@@ -229,38 +244,28 @@ async function fillProductSelect(sel){
 async function renderInventory(){
   let list=await all('products');
   if(invFilter==='out')list=list.filter(p=>(p.stock||0)<=0);
-  else if(invFilter==='low')list=list.filter(p=>{
-    const min=p.minStock||0;return min>0?(p.stock||0)<=min:(p.stock||0)<=5;
-  });
+  else if(invFilter==='low')list=list.filter(p=>{const min=p.minStock||0;return min>0?(p.stock||0)<=min:(p.stock||0)<=5});
   list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const box=$('#invList');
   if(!list.length){box.innerHTML='<div class="empty">No products match.</div>';return}
   box.innerHTML=list.map(p=>{
     const low=(p.minStock||0)>0&&(p.stock||0)<=(p.minStock||0);
-    return '<div class="inv-item" data-id="'+p.id+'"><div class="info"><div class="name" style="font-weight:700;font-size:14px">'+esc(p.name)+'</div><div class="meta" style="font-size:12px;color:var(--m)">'+(low?'Low stock · ':'')+(p.unit||'pcs')+(p.minStock?' · Min '+p.minStock:'')+'</div></div><div class="stk">'+(p.stock||0)+'</div><div class="adj"><button type="button" data-d="-1">−</button><button type="button" data-d="1">+</button></div></div>';
+    return '<div class="bulk-row" data-id="'+p.id+'"><div class="bn">'+(low?'⚠ ':'')+esc(p.name)+'<div style="font-size:11px;color:var(--m);font-weight:500">Min '+(p.minStock||0)+'</div></div><input type="number" min="0" class="bulk-stock" value="'+(p.stock||0)+'"></div>';
   }).join('');
-  $$('#invList .adj button').forEach(b=>b.onclick=async()=>{
-    const id=+b.closest('.inv-item').dataset.id;
-    const delta=+b.dataset.d;
-    const p=await getById('products',id);
-    if(!p)return;
-    p.stock=Math.max(0,(p.stock||0)+delta);
-    await put('products',p);
-    renderInventory();refresh();
-  });
 }
 
 /* ---------- Purchases ---------- */
 async function renderPurchases(){
-  const list=await all('purchases'),products=await all('products');
-  const pmap={};products.forEach(p=>pmap[p.id]=p.name);
+  const list=await all('purchases');
   list.sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  const spend=list.reduce((a,p)=>a+(+p.total||((+p.cost||0)*(+p.qty||0))),0);
+  if($('#poSpend'))$('#poSpend').textContent=fmt(spend);
+  let fout=0;
+  try{const fin=await all('finance');fout=fin.filter(x=>x.direction==='out').reduce((a,x)=>a+(+x.amount||0),0)}catch(e){}
+  if($('#finOut'))$('#finOut').textContent=fmt(fout);
   const box=$('#purList');
-  if(!list.length){box.innerHTML='<div class="empty">No purchases recorded yet.</div>';return}
-  box.innerHTML=list.map(pu=>{
-    const when=pu.ist||(pu.at?new Date(pu.at).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'');
-    return '<div class="pur-item" data-id="'+pu.id+'"><div class="pt">'+esc(pmap[pu.productId]||'Product #'+pu.productId)+' × '+(pu.qty||0)+'</div><div class="pm">'+fmt((pu.cost||0)*(pu.qty||0))+' · '+(pu.supplier?esc(pu.supplier)+' · ':'')+when+(pu.ref?' · Ref '+esc(pu.ref):'')+'</div></div>';
-  }).join('');
+  if(!list.length){box.innerHTML='<div class="empty">No purchase orders yet.</div>';return}
+  box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+(p.productName||('Product #'+p.productId))+' × '+(p.qty||0)+'</div><div class="tm">'+(p.ist||'')+' · '+(p.status||'received')+(p.supplier?' · '+p.supplier:'')+'</div></div><div class="pn">'+fmt(p.total||((p.cost||0)*(p.qty||0)))+'</div></div>').join('');
 }
 
 /* ---------- Init ---------- */
@@ -337,19 +342,19 @@ $('#purSave').onclick=async()=>{
   const p=await getById('products',pid);
   if(!p)return toast('Product not found');
   const cost=+$('#purCost').value||0;
+  const status=($('#purStatus')&&$('#purStatus').value)||'received';
   const now=new Date();
   const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
-  await put('purchases',{
-    productId:pid,qty,cost,
-    supplier:$('#purSupplier').value.trim(),
-    ref:$('#purRef').value.trim(),
-    notes:$('#purNotes').value.trim(),
-    at:now.toISOString(),ist
-  });
-  p.stock=(p.stock||0)+qty;
-  if(cost>0)p.cost=cost;
-  await put('products',p);
-  toast('Purchase recorded · stock +'+qty);
+  const total=cost*qty;
+  const po={productId:pid,productName:p.name,qty,cost,total,status,supplier:$('#purSupplier').value.trim(),ref:$('#purRef').value.trim(),notes:$('#purNotes').value.trim(),at:now.toISOString(),ist};
+  await put('purchases',po);
+  if(status==='received'){
+    p.stock=(p.stock||0)+qty;
+    if(cost>0)p.cost=cost;
+    await put('products',p);
+    await put('finance',{type:'purchase',direction:'out',amount:total,ref:po.ref||p.name,note:'PO · '+p.name+' x'+qty,at:now.toISOString(),ist});
+  }
+  toast(status==='received'?('PO received · stock +'+qty):'PO ordered (pending)');
   $('#purM').classList.remove('on');
   renderPurchases();refresh();
 };
@@ -368,12 +373,12 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   await openDB();
   await refresh();
   const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
-  if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
+  if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='');const pl=$('#plist');if(pl)pl.style.display='none';refresh()};
   if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();toast('No new notifications')};
   $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
     const a=b.dataset.act;closeDr();
     if(a==='add-product'){openProductModal(null);showAdminView('#viewMain')}
-    else if(a==='all-products'){showAdminView('#viewMain');refresh()}
+    else if(a==='all-products'){showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='none');const pl=$('#plist');if(pl)pl.style.display='flex';refresh()}const ins=$$('.insight');ins.forEach(e=>e.style.display='none');const st=$('.stats');}
     else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='low')});renderInventory()}
     else if(a==='variants'){showAdminView('#viewVariants')}
     else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='all')});renderInventory()}
@@ -391,4 +396,21 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   if($('#importFile'))$('#importFile').onchange=e=>{const f=e.target.files[0];if(f)doImport(f);e.target.value=''};
   if($('#btnErase2'))$('#btnErase2').onclick=()=>$('#btnErase').click();
   document.addEventListener('contextmenu',e=>e.preventDefault());
+
+if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
+  const rows=$$('#invList .bulk-row');
+  if(!rows.length)return toast('Nothing to save');
+  let n=0;
+  for(const row of rows){
+    const id=+row.dataset.id;
+    const val=+(row.querySelector('.bulk-stock')||{}).value;
+    if(!(id>0)||isNaN(val))continue;
+    const p=await getById('products',id);
+    if(!p)continue;
+    p.stock=Math.max(0,val);
+    await put('products',p);n++;
+  }
+  toast('Updated '+n+' products');
+  renderInventory();refresh();
+};
 })();

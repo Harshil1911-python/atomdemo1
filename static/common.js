@@ -4,12 +4,13 @@ const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const COLORS=['#dbeafe','#dcfce7','#fef3c7','#fce7f3','#e0e7ff','#ffedd5','#f3e8ff','#ecfdf5'];
 let db,_dlgResolve=null;
 
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',5);r.onupgradeneeded=e=>{const d=e.target.result;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',6);r.onupgradeneeded=e=>{const d=e.target.result;
   if(!d.objectStoreNames.contains('products')){const s=d.createObjectStore('products',{keyPath:'id',autoIncrement:true});s.createIndex('name','name')}
   if(!d.objectStoreNames.contains('transactions'))d.createObjectStore('transactions',{keyPath:'id'});
   if(!d.objectStoreNames.contains('held'))d.createObjectStore('held',{keyPath:'id',autoIncrement:true});
   if(!d.objectStoreNames.contains('variants')){const s=d.createObjectStore('variants',{keyPath:'id',autoIncrement:true});s.createIndex('productId','productId')}
   if(!d.objectStoreNames.contains('purchases'))d.createObjectStore('purchases',{keyPath:'id',autoIncrement:true});
+  if(!d.objectStoreNames.contains('finance'))d.createObjectStore('finance',{keyPath:'id',autoIncrement:true});
 };r.onsuccess=e=>{db=e.target.result;res(db)};r.onerror=e=>rej(e.target.error)})}
 const all=s=>new Promise((res,rej)=>{const t=db.transaction(s,'readonly').objectStore(s).getAll();t.onsuccess=()=>res(t.result||[]);t.onerror=()=>rej(t.error)});
 const put=(s,d)=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite').objectStore(s).put(d);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error)});
