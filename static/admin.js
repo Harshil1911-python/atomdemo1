@@ -143,82 +143,93 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup / Share (same path as barcode WA share) ---------- */
+/* ---------- Backup / Share — Web Share API files[] (ZIP only, same as barcode) ---------- */
 function _capPlugin(n){try{return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n]}catch(e){return null}}
-function _isNative(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}}
 function _blobB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const i=s.indexOf(',');res(i>=0?s.slice(i+1):s)};r.onerror=rej;r.readAsDataURL(blob)})}
-function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a)}catch(e){};URL.revokeObjectURL(url)},800)}
-async function _backupPayload(){
-  let finance=[];try{finance=await all('finance')}catch(e){}
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance};
-  const json=JSON.stringify(data);
-  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/[\/,\s:]+/g,'-');
-  const base='ATOM-backup-'+d;
-  return {json,base,blobJson:new Blob([json],{type:'application/json'}),blobZip:new Blob([json],{type:'application/octet-stream'})};
+function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a)}catch(e){}URL.revokeObjectURL(url)},800)}
+function _u16(n){return new Uint8Array([n&255,(n>>8)&255])}
+function _u32(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255])}
+function _crc32(buf){
+  let c=~0;for(let i=0;i<buf.length;i++){c^=buf[i];for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1))}
+  return (~c)>>>0;
 }
-async function _shareFiles(files,title,text){
-  if(!navigator.share)return false;
-  try{
-    const payload={files,title,text};
-    if(navigator.canShare&&!navigator.canShare(payload))return false;
-    await navigator.share(payload);
-    return true;
-  }catch(e){
-    if(e&&e.name==='AbortError')return 'abort';
-    return false;
-  }
-}
-async function _shareNativeFile(blob,filename,title,text){
-  try{
-    const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
-    if(!FS||!Share)return false;
-    const b64=await _blobB64(blob);
-    const path='atom-share/'+filename;
-    await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
-    let uri=null;
-    try{const u=await FS.getUri({path,directory:'CACHE'});uri=u&&(u.uri||u)}catch(e){}
-    if(!uri)return false;
-    try{await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});return true}
-    catch(e){try{await Share.share({title,text,url:uri,dialogTitle:'Share backup'});return true}catch(e2){return false}}
-  }catch(e){return false}
-}
-async function doDownload(){
-  try{
-    const {blobJson,base}=await _backupPayload();
-    _dlBlob(blobJson,base+'.json');
-    toast('Backup downloaded');
-  }catch(e){toast('Download failed')}
-}
-async function doShare(){
-  // Same approach as barcode/QR: build File[] → navigator.share({files})
-  let payload;
-  try{payload=await _backupPayload()}catch(e){toast('Could not build backup');return}
-  const {json,base,blobJson}=payload;
-  const title='ATOM POS Backup';
-  const text='ATOM POS database backup · restore in Admin → Database';
-  // 1) JSON file (WhatsApp / Android accept this like images)
-  const fJson=new File([blobJson],base+'.json',{type:'application/json'});
-  let r=await _shareFiles([fJson],title,text);
-  if(r===true){toast('Pick WhatsApp — file attached');return}
-  if(r==='abort')return;
-  // 2) octet-stream alias (some WebViews)
-  const fBin=new File([blobJson],base+'.json',{type:'application/octet-stream'});
-  r=await _shareFiles([fBin],title,text);
-  if(r===true){toast('Pick WhatsApp — file attached');return}
-  if(r==='abort')return;
-  // 3) Capacitor native share with file URI
-  if(await _shareNativeFile(blobJson,base+'.json',title,text)){toast('Pick WhatsApp — file attached');return}
-  // 4) Download then share text link instruction (last resort)
-  _dlBlob(blobJson,base+'.json');
-  try{
-    if(navigator.share){
-      await navigator.share({title,text:text+'\n\nFile saved as '+base+'.json — attach it from Downloads in WhatsApp'});
-      return;
-    }
-  }catch(e){if(e&&e.name==='AbortError')return}
-  toast('File saved to Downloads — attach in WhatsApp');
+function _zipOne(name,str){
+  const enc=new TextEncoder(),nameB=enc.encode(name),data=enc.encode(str),crc=_crc32(data);
+  const local=new Uint8Array([0x50,0x4b,0x03,0x04,..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(crc),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),...nameB,...data]);
+  const central=new Uint8Array([0x50,0x4b,0x01,0x02,..._u16(20),..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(crc),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(0),...nameB]);
+  const end=new Uint8Array([0x50,0x4b,0x05,0x06,..._u16(0),..._u16(0),..._u16(1),..._u16(1),..._u32(central.length),..._u32(local.length),..._u16(0)]);
+  return new Blob([local,central,end],{type:'application/zip'});
 }
 
+let _bakCache=null,_bakAt=0,_bakBusy=null;
+async function _backupZip(force){
+  if(!force&&_bakCache&&Date.now()-_bakAt<60000)return _bakCache;
+  if(_bakBusy)return _bakBusy;
+  _bakBusy=(async()=>{
+    let finance=[];try{finance=await all('finance')}catch(e){}
+    const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance};
+    const json=JSON.stringify(data);
+    const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/[\/,\s:]+/g,'-');
+    const filename='ATOM-backup-'+d+'.zip';
+    const blob=_zipOne('backup.json',json);
+    _bakCache={blob,filename,json};_bakAt=Date.now();_bakBusy=null;
+    return _bakCache;
+  })();
+  return _bakBusy;
+}
+function prewarmBackup(){try{_backupZip(true)}catch(e){}}
+
+async function doDownload(){
+  try{const p=await _backupZip(true);_dlBlob(p.blob,p.filename);toast('Backup ZIP downloaded')}
+  catch(e){toast('Download failed')}
+}
+
+async function doShare(){
+  // Same technique as barcode/QR: navigator.share({ files: [File] })
+  let p;try{p=await _backupZip(false)}catch(e){toast('Could not build backup');return}
+  const file=new File([p.blob],p.filename,{type:'application/zip'});
+  const title='ATOM POS Backup',text='*ATOM POS*\nDatabase backup ZIP\n'+p.filename;
+  try{
+    if(!navigator.share)throw new Error('no share');
+    // Match barcode path: share files directly (no canShare gate)
+    await navigator.share({files:[file],title,text});
+    toast('Choose WhatsApp');
+    return;
+  }catch(e){
+    if(e&&e.name==='AbortError')return;
+  }
+  // Capacitor native (optional)
+  try{
+    const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
+    if(FS&&Share){
+      const b64=await _blobB64(p.blob);
+      const path='atom-share/'+p.filename;
+      await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
+      const u=await FS.getUri({path,directory:'CACHE'});
+      const uri=u&&(u.uri||u);
+      if(uri){await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});toast('Choose WhatsApp');return}
+    }
+  }catch(e){}
+  toast('Share not supported for ZIP on this browser');
+}
+
+
+
+async function _parseBackupFile(file){
+  const buf=await file.arrayBuffer();
+  const u8=new Uint8Array(buf);
+  // ZIP magic PK
+  if(u8[0]===0x50&&u8[1]===0x4b){
+    // store-only zip: find local file data after name
+    const nameLen=u8[26]|(u8[27]<<8),extraLen=u8[28]|(u8[29]<<8);
+    const dataStart=30+nameLen+extraLen;
+    const compSize=(u8[18]|(u8[19]<<8)|(u8[20]<<16)|(u8[21]<<24))>>>0;
+    const slice=u8.slice(dataStart,dataStart+compSize);
+    const text=new TextDecoder().decode(slice);
+    return JSON.parse(text);
+  }
+  return JSON.parse(new TextDecoder().decode(u8));
+}
 
 async function doRestore(file){
   try{
@@ -730,7 +741,7 @@ function savePrefs(){
       else if(a==='coupons')showAdminView('#viewCoupons')
       else if(a==='barcodes')showAdminView('#viewBarcodes')
       else if(a==='prefs'){showAdminView('#viewPrefs');loadPrefs()}
-      else if(a==='database')showAdminView('#viewDatabase')
+      else if(a==='database'){showAdminView('#viewDatabase');prewarmBackup()}
       else if(a==='payment-log')showAdminView('#viewPayLog')
       else if(a==='shift')showAdminView('#viewShift')
       else if(a==='sessions')showAdminView('#viewSessions')
@@ -745,7 +756,10 @@ function savePrefs(){
   try{await openDB();await refresh()}catch(e){console.error(e)}
   if($('#btnSavePrefs'))$('#btnSavePrefs').onclick=savePrefs;
   if($('#btnDownload'))$('#btnDownload').onclick=doDownload;
-  if($('#btnShare'))$('#btnShare').onclick=doShare;
+  if($('#btnShare')){
+    $('#btnShare').onpointerdown=()=>{prewarmBackup()};
+    $('#btnShare').onclick=e=>{e.preventDefault();doShare()};
+  }
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();
   if($('#restoreFile'))$('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
   if($('#btnBulkPrintBc'))$('#btnBulkPrintBc').onclick=bulkPrintBarcodes;
