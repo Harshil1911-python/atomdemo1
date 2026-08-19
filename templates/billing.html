@@ -245,13 +245,20 @@
 </div></div></div>
 <div class="modal" id="actM"><div class="mbox"><div class="mhd"><span id="actTitle">Action</span> <button type="button" id="actX">×</button></div><div class="mbd" id="actBody"></div></div></div>
 
-<div class="modal" id="scanM"><div class="mbox" style="max-width:100%;width:100%;margin:0;border-radius:16px 16px 0 0;max-height:90vh"><div class="mhd">Scan barcode <button type="button" id="scanX">×</button></div><div class="mbd" style="padding:0">
-  <div style="position:relative;background:#000;aspect-ratio:3/4;max-height:55vh;overflow:hidden">
-    <video id="scanVid" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video>
-    <div style="position:absolute;inset:18% 12%;border:2px solid rgba(255,255,255,.85);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35);pointer-events:none"></div>
+<div class="modal" id="scanM"><div class="mbox" style="max-width:100%;width:100%;margin:0;border-radius:16px 16px 0 0;max-height:92vh;display:flex;flex-direction:column"><div class="mhd">Scan barcode <button type="button" id="scanX">×</button></div><div class="mbd" style="padding:0;display:flex;flex-direction:column;min-height:0;flex:1">
+  <div style="position:relative;background:#000;width:100%;height:min(42vh,320px);overflow:hidden;flex-shrink:0">
+    <video id="scanVid" playsinline muted autoplay style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+    <div style="position:absolute;left:50%;top:50%;width:72%;max-width:280px;aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.4);pointer-events:none"></div>
   </div>
-  <p id="scanHint" style="padding:12px 16px;font-size:13px;color:var(--m);font-weight:500;text-align:center">Point camera at barcode</p>
-  <div style="padding:0 16px 16px;display:flex;gap:8px">
+  <div id="scanCart" style="padding:10px 14px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="font-size:12px;font-weight:700;color:var(--m)" id="scanCartMeta">0 items · ₹0</span>
+      <span style="font-size:15px;font-weight:800;color:var(--p)" id="scanCartTotal">₹0</span>
+    </div>
+    <div id="scanCartLast" style="font-size:12px;font-weight:600;color:var(--t);min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">No items yet</div>
+  </div>
+  <p id="scanHint" style="padding:10px 14px 6px;font-size:12px;color:var(--m);font-weight:600;text-align:center;margin:0">Point camera at barcode</p>
+  <div style="padding:0 14px 14px;display:flex;gap:8px;flex-shrink:0">
     <input id="scanManual" placeholder="Or type barcode" style="flex:1;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit">
     <button type="button" class="save" id="scanGo" style="padding:11px 16px;border:0;border-radius:10px;background:var(--p);color:#fff;font-weight:700;font-family:inherit">Go</button>
   </div>
@@ -553,13 +560,54 @@ async function renderPhoto(q=''){
     console.error(err);
   }
 }
-let _scanStream=null,_scanLoop=0,_scanBusy=false;
+let _scanStream=null,_scanLoop=0,_scanBusy=false,_scanLast='',_scanLastAt=0,_scanProds=null;
+function updateScanCart(){
+  const n=cart.reduce((a,c)=>a+c.qty,0),tot=cart.reduce((a,c)=>a+c.qty*c.price,0);
+  if($('#scanCartMeta'))$('#scanCartMeta').textContent=n+' item'+(n===1?'':'s')+' · '+fmt(tot);
+  if($('#scanCartTotal'))$('#scanCartTotal').textContent=fmt(tot);
+  const last=cart.length?cart[cart.length-1]:null;
+  if($('#scanCartLast'))$('#scanCartLast').textContent=last?(last.name+' × '+last.qty+' · '+fmt(last.qty*last.price)):'No items yet';
+  renderCartBar();
+}
 async function stopScan(){_scanLoop=0;_scanBusy=false;try{if(_scanStream){_scanStream.getTracks().forEach(t=>t.stop());_scanStream=null}}catch(e){}const v=$('#scanVid');if(v)v.srcObject=null;$('#scanM')&&$('#scanM').classList.remove('on')}
-async function handleBarcode(code){code=String(code||'').trim();if(!code)return;await stopScan();const list=await all('products');const p=list.find(x=>String(x.barcode||'')===code||String(x.sku||'')===code||String(x.id)===code);if(!p){toast('No product for '+code);return}toast(p.name);selectProduct(p)}
-async function startScan(){$('#scanM').classList.add('on');$('#scanHint').textContent='Starting camera…';if($('#scanManual'))$('#scanManual').value='';try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('no cam');_scanStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});const v=$('#scanVid');v.srcObject=_scanStream;await v.play();$('#scanHint').textContent='Point camera at barcode';if('BarcodeDetector' in window){const det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','itf']});_scanLoop=1;const tick=async()=>{if(!_scanLoop||_scanBusy)return;try{if(v.readyState>=2){_scanBusy=true;const codes=await det.detect(v);_scanBusy=false;if(codes&&codes.length&&codes[0].rawValue){await handleBarcode(codes[0].rawValue);return}}}catch(e){_scanBusy=false}if(_scanLoop)requestAnimationFrame(tick)};requestAnimationFrame(tick)}else $('#scanHint').textContent='Live scan needs Chrome/Edge. Type barcode below.'}catch(e){$('#scanHint').textContent='Camera blocked or unavailable. Type barcode below.'}}
+async function handleBarcode(code,keepOpen){
+  code=String(code||'').trim();if(!code)return;
+  const now=Date.now();if(code===_scanLast&&now-_scanLastAt<1200)return;_scanLast=code;_scanLastAt=now;
+  if(!_scanProds)_scanProds=await all('products');
+  const p=_scanProds.find(x=>String(x.barcode||'')===code||String(x.sku||'')===code||String(x.id)===code);
+  if(!p){if($('#scanHint'))$('#scanHint').textContent='No product for '+code;toast('No product for '+code);return}
+  selectProduct(p);updateScanCart();
+  if($('#scanHint'))$('#scanHint').textContent='Added '+p.name+' — scan next';
+  if($('#scanManual'))$('#scanManual').value='';
+  if(!keepOpen)return;
+}
+async function startScan(){
+  $('#scanM').classList.add('on');updateScanCart();
+  $('#scanHint').textContent='Starting camera…';if($('#scanManual'))$('#scanManual').value='';
+  _scanLast='';_scanLastAt=0;_scanProds=null;
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('no cam');
+    if(!_scanStream){_scanStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});const v=$('#scanVid');v.srcObject=_scanStream;await v.play()}
+    $('#scanHint').textContent='Point camera at barcode';
+    if('BarcodeDetector' in window){
+      const det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','itf']});
+      _scanLoop=1;const v=$('#scanVid');
+      const tick=async()=>{
+        if(!_scanLoop)return;
+        if(!_scanBusy&&v.readyState>=2){
+          _scanBusy=true;
+          try{const codes=await det.detect(v);if(codes&&codes.length&&codes[0].rawValue)await handleBarcode(codes[0].rawValue,true)}catch(e){}
+          _scanBusy=false;
+        }
+        if(_scanLoop)setTimeout(tick,120);
+      };
+      setTimeout(tick,120);
+    }else $('#scanHint').textContent='Live scan needs Chrome/Edge. Type barcode below.';
+  }catch(e){$('#scanHint').textContent='Camera blocked or unavailable. Type barcode below.'}
+}
 if($('#scanX'))$('#scanX').onclick=()=>stopScan();
-if($('#scanGo'))$('#scanGo').onclick=()=>handleBarcode($('#scanManual').value);
-if($('#scanManual'))$('#scanManual').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();handleBarcode($('#scanManual').value)}};
+if($('#scanGo'))$('#scanGo').onclick=()=>handleBarcode($('#scanManual').value,true);
+if($('#scanManual'))$('#scanManual').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();handleBarcode($('#scanManual').value,true)}};
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>startScan();
 async function renderText(q){const box=$('#tsList');const list=await all('products');let f=list.slice();if(catFilter)f=f.filter(p=>(p.cat||'General')===catFilter);const qq=(q||'').trim().toLowerCase();if(qq)f=f.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq));if(!qq&&!catFilter){box.innerHTML='<div class="empty">Start typing or pick a category</div>';return}if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>'<div class="ti" data-id="'+p.id+'"><div class="ico">'+productIcon(p)+'</div><span>'+p.name+((p.stock||0)<=0?' · out of stock':'')+'</span><em>'+fmt(p.price)+'</em></div>').join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
 $('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>startScan();
