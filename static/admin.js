@@ -178,16 +178,18 @@ async function doShare(){
     const {blob,filename}=await _backupBlob();
     const title='ATOM POS Backup',text='ATOM POS full offline backup · '+filename;
     const file=new File([blob],filename,{type:'application/zip'});
-    // Prefer system share sheet so user can pick WhatsApp (file attaches on Android)
+    let shared=false;
     if(navigator.share){
       try{
-        if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title,text});toast('Pick WhatsApp to send ZIP');return}
-        await navigator.share({files:[file],title,text});toast('Pick WhatsApp to send ZIP');return;
+        const can=navigator.canShare?navigator.canShare({files:[file]}):true;
+        if(can){await navigator.share({files:[file],title,text});shared=true}
       }catch(e){if(e&&e.name==='AbortError')return}
     }
-    if(_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share via WhatsApp'})){toast('Share sheet opened');return}
-    // Last resort: download then user can attach manually
-    _dlBlob(blob,filename);toast('Downloaded — open WhatsApp and attach the ZIP');
+    if(!shared&&_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share via WhatsApp'}))shared=true;
+    if(shared){toast('Choose WhatsApp to send the ZIP');return}
+    _dlBlob(blob,filename);
+    try{window.open('https://wa.me/?text='+encodeURIComponent('ATOM POS backup ready. Please attach the downloaded file: '+filename),'_blank')}catch(e){}
+    toast('ZIP downloaded — attach it in WhatsApp');
   }catch(e){toast('Share failed — try Download')}
 }
 async function _parseBackupFile(file){
@@ -598,43 +600,47 @@ async function renderCoupons(){
   box.innerHTML=list.map(c=>'<div class="sess-item"><div><div class="pn">'+esc(c.code)+'</div><div class="tm">'+(c.type==='pct'?c.value+'%':'₹'+c.value)+' off · Min ₹'+(c.min||0)+(c.active?' · Active':' · Off')+'</div></div><button type="button" class="del" data-id="'+c.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
   $$('#couponList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Delete coupon?','Delete',true)))return;await del('coupons',+b.dataset.id);renderCoupons()});
 }
-function _drawBc(canvas,code){const ctx=canvas.getContext('2d'),w=canvas.width,h=canvas.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);const s=String(code||'');let x=8;ctx.fillStyle='#000';for(let i=0;i<s.length;i++){const n=s.charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,8,1.5,h-28);x+=2}x+=1.5}ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(s,w/2,h-6);ctx.font='9px sans-serif';ctx.fillStyle='#64748b';ctx.fillText('ATOM POS',w/2,h-18)}
-function _bcCard(p,code){const c=document.createElement('canvas');c.width=220;c.height=80;_drawBc(c,code);const qr='https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(code);return '<div class="bc-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:8px 0;text-align:center;background:#fff"><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+esc(p.name)+'</div><canvas width="220" height="80" style="max-width:100%"></canvas><img src="'+qr+'" alt="QR" width="100" height="100" style="margin:8px auto;display:block;border-radius:8px"><div style="font-family:ui-monospace;font-size:12px;margin:4px 0">'+esc(code)+'</div><div style="font-size:10px;color:#64748b;font-weight:600">ATOM POS</div></div>'}
+function _drawBc(c,code){const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);let x=8;ctx.fillStyle='#000';for(let i=0;i<String(code).length;i++){const n=String(code).charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,6,1.6,h-26);x+=2}x+=1.4}ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(String(code),w/2,h-4);ctx.font='9px sans-serif';ctx.fillStyle='#64748b';ctx.fillText('ATOM POS',w/2,h-16)}
+function _bcCard(p,code){return '<div class="bc-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:8px 0;text-align:center;background:#fff"><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+esc(p.name)+'</div><canvas width="220" height="72" style="max-width:100%"></canvas><img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data='+encodeURIComponent(code)+'" alt="QR" width="100" height="100" style="margin:8px auto;display:block;border-radius:8px"><div style="font-family:ui-monospace;font-size:12px">'+esc(code)+'</div><div style="font-size:10px;color:#64748b;font-weight:600">ATOM POS</div></div>'}
+function _codesOf(p){const a=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!a.length&&p.sku)a.push(String(p.sku));return a}
+async function _ensureBarcodes(){ // auto-generate missing barcodes for all products
+  const list=await all('products');let n=0;
+  for(const p of list){if(_codesOf(p).length)continue;p.barcode='ATOM'+String(p.id).padStart(8,'0');await put('products',p);n++}
+  return n;
+}
 async function renderBarcodes(){
-  const list=(await all('products')).filter(p=>p.barcode||p.sku);
+  const gen=await _ensureBarcodes();
+  const list=await all('products');
   const box=$('#barcodeList');
-  if(!list.length){box.innerHTML='<div class="empty">No barcodes set. Edit a product to add one.</div>';return}
+  if(!list.length){box.innerHTML='<div class="empty">No products yet.</div>';return}
+  if(gen)toast('Auto-generated '+gen+' barcode(s)');
   box.innerHTML=list.map(p=>{
-    const codes=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);
-    const main=codes[0]||p.sku||'';
-    return '<div class="sess-item" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:120px"><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(codes.join(', ')||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn" data-bc-view="'+p.id+'" style="padding:6px 10px;font-size:12px">View</button><button type="button" class="btn btn-g" data-bc-wa="'+p.id+'" style="padding:6px 10px;font-size:12px">WhatsApp</button></div></div>';
+    const codes=_codesOf(p);
+    return '<div class="sess-item" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:120px"><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(codes.join(', ')||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div style="display:flex;gap:6px"><button type="button" class="btn" data-bc-view="'+p.id+'" style="padding:6px 10px;font-size:12px">View</button><button type="button" class="btn btn-g" data-bc-wa="'+p.id+'" style="padding:6px 10px;font-size:12px">WhatsApp</button></div></div>';
   }).join('');
   $$('[data-bc-view]').forEach(b=>b.onclick=async()=>{
     const p=(await all('products')).find(x=>+x.id===+b.dataset.bcView);if(!p)return;
-    const codes=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!codes.length&&p.sku)codes.push(p.sku);
-    const body=$('#bcViewBody');body.innerHTML='';
+    const codes=_codesOf(p);const body=$('#bcViewBody');body.innerHTML='';
     codes.forEach(code=>{const wrap=document.createElement('div');wrap.innerHTML=_bcCard(p,code);const card=wrap.firstChild;const cv=card.querySelector('canvas');if(cv)_drawBc(cv,code);body.appendChild(card)});
-    body.innerHTML+= '<button type="button" class="btn btn-p" id="bcPrintOne" style="width:100%;margin-top:8px">Print</button>';
+    body.innerHTML+='<button type="button" class="btn btn-p" id="bcPrintOne" style="width:100%;margin-top:8px">Print</button>';
     $('#bcViewM').classList.add('on');
-    if($('#bcPrintOne'))$('#bcPrintOne').onclick=()=>{const w=window.open('','_blank');w.document.write('<html><head><title>ATOM POS Barcode</title><style>body{font-family:sans-serif;text-align:center;padding:20px}.bc-card{page-break-inside:avoid;margin:16px auto}</style></head><body>'+body.innerHTML.replace(/<button[\s\S]*?<\/button>/g,'')+'<script>window.onload=()=>window.print()<\/script></body></html>');w.document.close()};
+    if($('#bcPrintOne'))$('#bcPrintOne').onclick=()=>{const w=window.open('','_blank');w.document.write('<html><head><title>ATOM POS</title><style>body{font-family:sans-serif;text-align:center;padding:16px}.bc-card{page-break-inside:avoid;margin:12px auto}</style></head><body>'+body.innerHTML.replace(/<button[\s\S]*?<\/button>/g,'')+'<script>window.onload=()=>print()<\/script></body></html>');w.document.close()};
   });
   $$('[data-bc-wa]').forEach(b=>b.onclick=async()=>{
     const p=(await all('products')).find(x=>+x.id===+b.dataset.bcWa);if(!p)return;
-    const codes=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);const code=codes[0]||p.sku||'';
-    const text='*ATOM POS*\nProduct: '+p.name+'\nBarcode: '+code+'\nPrice: '+fmt(p.price);
-    const url='https://wa.me/?text='+encodeURIComponent(text);
-    window.open(url,'_blank');
+    const code=_codesOf(p)[0]||'';
+    window.open('https://wa.me/?text='+encodeURIComponent('*ATOM POS*\n'+p.name+'\nBarcode: '+code+'\nPrice: '+fmt(p.price)),'_blank');
   });
 }
 async function bulkPrintBarcodes(){
-  const list=(await all('products')).filter(p=>p.barcode||p.sku);
-  if(!list.length)return toast('No barcodes');
-  let html='<html><head><title>ATOM POS – Bulk Barcodes</title><style>body{font-family:sans-serif;padding:12px}.bc-card{page-break-inside:avoid;border:1px solid #ddd;border-radius:8px;padding:10px;margin:10px;display:inline-block;width:240px;text-align:center;vertical-align:top}h1{font-size:14px;color:#64748b}</style></head><body><h1>ATOM POS – Barcode / QR sheet</h1>';
-  for(const p of list){const codes=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!codes.length&&p.sku)codes.push(p.sku);for(const code of codes)html+=_bcCard(p,code)}
-  html+='<script>window.onload=()=>{document.querySelectorAll("canvas").forEach((c,i)=>{/* redraw after print open */});window.print()}<\/script></body></html>';
+  await _ensureBarcodes();
+  const list=await all('products');
+  if(!list.length)return toast('No products');
+  let html='<html><head><title>ATOM POS Barcodes</title><style>body{font-family:sans-serif;padding:12px}.bc-card{page-break-inside:avoid;border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px;display:inline-block;width:230px;text-align:center;vertical-align:top}</style></head><body><h2 style="font-size:14px;color:#64748b">ATOM POS – Barcode / QR</h2>';
+  for(const p of list)for(const code of _codesOf(p))html+=_bcCard(p,code);
+  html+='</body></html>';
   const w=window.open('','_blank');w.document.write(html);w.document.close();
-  // redraw canvases in the new window after a tick
-  setTimeout(()=>{try{const cvs=w.document.querySelectorAll('canvas');let i=0;list.forEach(p=>{const codes=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!codes.length&&p.sku)codes.push(p.sku);codes.forEach(code=>{if(cvs[i]){const ctx=cvs[i].getContext('2d');_drawBc(cvs[i],code);i++}})})}catch(e){}},400);
+  setTimeout(()=>{try{const cvs=w.document.querySelectorAll('canvas');let i=0;list.forEach(p=>_codesOf(p).forEach(code=>{if(cvs[i])_drawBc(cvs[i++],code)}));w.print()}catch(e){}},500);
 }
 
 
@@ -701,20 +707,26 @@ function savePrefs(){
   if($('#btnBulkPrintBc'))$('#btnBulkPrintBc').onclick=bulkPrintBarcodes;
   if($('#bcViewX'))$('#bcViewX').onclick=()=>$('#bcViewM').classList.remove('on');
   if($('#pScanBc'))$('#pScanBc').onclick=async()=>{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return toast('Camera not available');
+    let ov=document.getElementById('admScanOv');
+    if(!ov){ov=document.createElement('div');ov.id='admScanOv';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column';ov.innerHTML='<video id="admScanVid" playsinline muted autoplay style="flex:1;width:100%;object-fit:cover"></video><div style="padding:14px;background:#111;color:#fff;text-align:center;font-weight:600" id="admScanHint">Point at barcode / QR</div><button type="button" id="admScanClose" style="margin:0 14px 14px;padding:12px;border:0;border-radius:10px;background:#fff;font-weight:700">Close</button>';document.body.appendChild(ov)}
+    ov.style.display='flex';
+    const v=$('#admScanVid'),hint=$('#admScanHint');
+    let stream=null,loop=1,busy=0;
+    const stop=()=>{loop=0;try{if(stream)stream.getTracks().forEach(t=>t.stop())}catch(e){}ov.style.display='none';if(v)v.srcObject=null};
+    $('#admScanClose').onclick=stop;
     try{
-      if(!('BarcodeDetector' in window)||!navigator.mediaDevices)return toast('Scanner needs Chrome/Edge + camera');
-      const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-      const v=document.createElement('video');v.playsInline=true;v.muted=true;v.srcObject=stream;await v.play();
-      const det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code']});
-      toast('Point at barcode…');
-      let found=false;
-      for(let i=0;i<40&&!found;i++){
-        await new Promise(r=>setTimeout(r,150));
-        try{const codes=await det.detect(v);if(codes&&codes[0]&&codes[0].rawValue){found=true;const code=codes[0].rawValue;const cur=($('#pBarcode').value||'').trim();$('#pBarcode').value=cur?(cur.includes(code)?cur:cur+','+code):code;toast('Scanned: '+code)}}catch(e){}
-      }
-      stream.getTracks().forEach(t=>t.stop());
-      if(!found)toast('No barcode detected — try again');
-    }catch(e){toast('Camera blocked or unavailable')}
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});
+      v.srcObject=stream;await v.play();
+      if(!('BarcodeDetector' in window)){hint.textContent='Live scan needs Chrome/Edge. Type barcode instead.';return}
+      const det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','itf']});
+      const tick=async()=>{
+        if(!loop)return;
+        if(!busy&&v.readyState>=2){busy=1;try{const codes=await det.detect(v);if(codes&&codes[0]&&codes[0].rawValue){const code=codes[0].rawValue;const cur=($('#pBarcode').value||'').trim();$('#pBarcode').value=cur?(cur.split(/[,;|]/).map(s=>s.trim()).includes(code)?cur:cur+','+code):code;toast('Scanned: '+code);stop();return}}catch(e){}busy=0}
+        if(loop)setTimeout(tick,120);
+      };
+      setTimeout(tick,200);
+    }catch(e){hint.textContent='Camera blocked — allow camera permission';toast('Camera blocked')}
   };
   if($('#btnImportCsv'))$('#btnImportCsv').onclick=()=>$('#importFile').click();
   if($('#importFile'))$('#importFile').onchange=e=>{const f=e.target.files[0];if(f)doImport(f);e.target.value=''};
