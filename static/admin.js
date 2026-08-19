@@ -89,6 +89,10 @@ function openProductModal(p){
   $('#pCat').value=p&&p.cat?p.cat:'General';
   $('#pBarcode').value=p?p.barcode||'':'';
   $('#pSku').value=p?p.sku||'':'';
+  $('#pBrand').value=p?p.brand||'':'';
+  $('#pHsn').value=p?p.hsn||'':'';
+  $('#pReorder').value=p&&p.reorder!=null?p.reorder:'';
+  if($('#pTaxInc'))$('#pTaxInc').checked=!!(p&&p.taxInc);
   $('#pSupplier').value=p?p.supplier||'':'';
   $('#pExpiry').value=p?p.expiry||'':'';
   $('#pDesc').value=p?p.desc||'':'';
@@ -97,7 +101,7 @@ function openProductModal(p){
 
 /* ---------- Backup with Web Share ---------- */
 async function doBackup(){
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases')};
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons')};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   const filename='ATOM-backup-'+d+'.json';
@@ -128,11 +132,15 @@ async function doRestore(file){
     await clearStore('products');await clearStore('transactions');await clearStore('held');
     try{await clearStore('variants')}catch(e){}
     try{await clearStore('purchases')}catch(e){}
+    try{await clearStore('suppliers')}catch(e){}
+    try{await clearStore('coupons')}catch(e){}
     for(const x of (data.products||[])){const copy=Object.assign({},x);delete copy.id;await put('products',copy)}
     for(const x of (data.transactions||[]))await put('transactions',x);
     for(const x of (data.held||[])){const copy=Object.assign({},x);delete copy.id;await put('held',copy)}
     for(const x of (data.variants||[])){const copy=Object.assign({},x);delete copy.id;await put('variants',copy)}
     for(const x of (data.purchases||[])){const copy=Object.assign({},x);delete copy.id;await put('purchases',copy)}
+    for(const x of (data.suppliers||[])){const copy=Object.assign({},x);delete copy.id;await put('suppliers',copy)}
+    for(const x of (data.coupons||[])){const copy=Object.assign({},x);delete copy.id;await put('coupons',copy)}
     toast('Restore complete');refresh();showAdminView('#viewMain');
   }catch(e){toast('Restore failed')}
 }
@@ -298,6 +306,10 @@ $('#pSave').onclick=async()=>{
     cat:$('#pCat').value||'General',
     barcode:$('#pBarcode').value.trim(),
     sku:$('#pSku').value.trim(),
+    brand:$('#pBrand')?$('#pBrand').value.trim():'',
+    hsn:$('#pHsn')?$('#pHsn').value.trim():'',
+    reorder:+($('#pReorder')&&$('#pReorder').value)||0,
+    taxInc:!!($('#pTaxInc')&&$('#pTaxInc').checked),
     supplier:$('#pSupplier').value.trim(),
     expiry:$('#pExpiry').value||'',
     desc:$('#pDesc').value.trim(),
@@ -325,6 +337,8 @@ $('#btnErase').onclick=async()=>{
   await clearStore('products');await clearStore('transactions');await clearStore('held');
   try{await clearStore('variants')}catch(e){}
   try{await clearStore('purchases')}catch(e){}
+    try{await clearStore('suppliers')}catch(e){}
+    try{await clearStore('coupons')}catch(e){}
   toast('All data erased');refresh();
 };
 
@@ -377,6 +391,51 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   renderInventory();
 });
 
+
+function daysLeft(exp){return Math.ceil((new Date(exp)-new Date())/864e5)}
+async function renderReorder(){
+  const list=(await all('products')).filter(p=>{const min=+p.minStock||0;return min>0?(+p.stock||0)<=min:(+p.stock||0)<=5});
+  const box=$('#reorderList');
+  if(!list.length){box.innerHTML='<div class="empty">All stocked up.</div>';return}
+  box.innerHTML=list.map(p=>{
+    const need=Math.max((+p.reorder||+p.minStock||10)-(+p.stock||0),0);
+    return '<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">Stock '+(p.stock||0)+' · Min '+(p.minStock||0)+'</div></div><div class="pn">Order '+need+'</div></div>';
+  }).join('');
+}
+async function renderExpiring(){
+  const list=(await all('products')).filter(p=>p.expiry).map(p=>({...p,d:daysLeft(p.expiry)})).filter(p=>p.d<=30).sort((a,b)=>a.d-b.d);
+  const box=$('#expList');
+  if(!list.length){box.innerHTML='<div class="empty">Nothing expiring soon.</div>';return}
+  box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">'+(p.d<0?('Expired '+Math.abs(p.d)+'d ago'):(p.d===0?'Expires today':p.d+'d left'))+'</div></div><div class="pn">'+fmt(p.price)+'</div></div>').join('');
+}
+async function renderSuppliers(){
+  const list=await all('suppliers');
+  const box=$('#supList');
+  if(!list.length){box.innerHTML='<div class="empty">No suppliers yet.</div>';return}
+  box.innerHTML=list.map(s=>'<div class="sess-item"><div><div class="pn">'+esc(s.name)+'</div><div class="tm">'+esc(s.phone||'')+(s.city?' · '+esc(s.city):'')+'</div></div><button type="button" class="del" data-id="'+s.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
+  $$('#supList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Remove supplier?','Delete',true)))return;await del('suppliers',+b.dataset.id);renderSuppliers()});
+}
+async function renderPricelist(){
+  const list=(await all('products')).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const box=$('#priceList');
+  if(!list.length){box.innerHTML='<div class="empty">No products.</div>';return}
+  box.innerHTML=list.map(p=>'<div class="bulk-row" data-id="'+p.id+'"><div class="bn">'+esc(p.name)+'<div style="font-size:11px;color:var(--m)">Cost '+fmt(p.cost||0)+'</div></div><input type="number" min="0" step="0.01" class="bulk-price" value="'+(p.price||0)+'"></div>').join('');
+}
+async function renderCoupons(){
+  const list=await all('coupons');
+  const box=$('#couponList');
+  if(!list.length){box.innerHTML='<div class="empty">No coupons yet.</div>';return}
+  box.innerHTML=list.map(c=>'<div class="sess-item"><div><div class="pn">'+esc(c.code)+'</div><div class="tm">'+(c.type==='pct'?c.value+'%':'₹'+c.value)+' off · Min ₹'+(c.min||0)+(c.active?' · Active':' · Off')+'</div></div><button type="button" class="del" data-id="'+c.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
+  $$('#couponList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Delete coupon?','Delete',true)))return;await del('coupons',+b.dataset.id);renderCoupons()});
+}
+async function renderBarcodes(){
+  const list=(await all('products')).filter(p=>p.barcode||p.sku);
+  const box=$('#barcodeList');
+  if(!list.length){box.innerHTML='<div class="empty">No barcodes set. Edit a product to add one.</div>';return}
+  box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(p.barcode||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div class="pn">'+fmt(p.price)+'</div></div>').join('');
+}
+
+
 (async()=>{
   logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
@@ -394,11 +453,17 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
     else if(a==='variants'){showAdminView('#viewVariants')}
     else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='all')});renderInventory()}
     else if(a==='purchase'){showAdminView('#viewPurchase')}
+    else if(a==='suppliers'){showAdminView('#viewSuppliers')}
+    else if(a==='reorder'){showAdminView('#viewReorder')}
+    else if(a==='expiring'){showAdminView('#viewExpiring')}
+    else if(a==='pricelist'){showAdminView('#viewPricelist')}
+    else if(a==='coupons'){showAdminView('#viewCoupons')}
+    else if(a==='barcodes'){showAdminView('#viewBarcodes')}
     else if(a==='database'){showAdminView('#viewDatabase')}
     else if(a==='sessions'){showAdminView('#viewSessions')}
     else if(a==='panel'){location.href='/billing'}
     else if(a==='sales-today'||a==='sales-all'||a==='unpaid'){toast('Sales reports — coming soon')}
-    else if(a==='customers'||a==='suppliers'){toast('Relations — coming soon')}
+    else if(a==='customers'){toast('Customers — coming soon')}
   });
   if($('#btnBackup'))$('#btnBackup').onclick=doBackup;
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();
@@ -407,6 +472,26 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   if($('#importFile'))$('#importFile').onchange=e=>{const f=e.target.files[0];if(f)doImport(f);e.target.value=''};
   if($('#btnErase2'))$('#btnErase2').onclick=()=>$('#btnErase').click();
   document.addEventListener('contextmenu',e=>e.preventDefault());
+
+  
+  if($('#btnAddSupplier'))$('#btnAddSupplier').onclick=async()=>{
+    const name=prompt('Supplier name');if(!name)return;
+    const phone=prompt('Phone','')||'';const city=prompt('City','')||'';
+    await put('suppliers',{name:name.trim(),phone,city});toast('Supplier added');renderSuppliers();
+  };
+  if($('#btnAddCoupon'))$('#btnAddCoupon').onclick=async()=>{
+    const code=(prompt('Coupon code')||'').trim().toUpperCase();if(!code)return;
+    const type=(prompt('Type: pct or flat','pct')||'pct').toLowerCase();
+    const value=+prompt('Value','10')||0;const min=+prompt('Min order ₹','0')||0;
+    await put('coupons',{code,type:type==='flat'?'flat':'pct',value,min,active:true});toast('Coupon saved');renderCoupons();
+  };
+  if($('#btnPriceSave'))$('#btnPriceSave').onclick=async()=>{
+    let n=0;for(const row of $$('#priceList .bulk-row')){
+      const id=+row.dataset.id,val=+(row.querySelector('.bulk-price')||{}).value;
+      if(!(id>0)||isNaN(val))continue;const pr=await getById('products',id);if(!pr)continue;
+      pr.price=Math.max(0,val);await put('products',pr);n++;
+    }toast('Updated '+n+' prices');renderPricelist();refresh();
+  };
 
   if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
     const rows=$$('#invList .bulk-row');
