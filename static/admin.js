@@ -176,20 +176,19 @@ async function doDownload(){try{const {blob,filename}=await _backupBlob();_dlBlo
 async function doShare(){
   try{
     const {blob,filename}=await _backupBlob();
-    const title='ATOM POS Backup',text='ATOM POS full offline backup · '+filename;
+    const title='ATOM POS Backup',text='ATOM POS backup · '+filename;
     const file=new File([blob],filename,{type:'application/zip'});
-    let shared=false;
+    // System share sheet → pick WhatsApp (file auto-attaches on Android/PWA)
     if(navigator.share){
       try{
-        const can=navigator.canShare?navigator.canShare({files:[file]}):true;
-        if(can){await navigator.share({files:[file],title,text});shared=true}
+        if(!navigator.canShare||navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title,text});
+          toast('Pick WhatsApp — file is attached');return;
+        }
       }catch(e){if(e&&e.name==='AbortError')return}
     }
-    if(!shared&&_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share via WhatsApp'}))shared=true;
-    if(shared){toast('Choose WhatsApp to send the ZIP');return}
-    _dlBlob(blob,filename);
-    try{window.open('https://wa.me/?text='+encodeURIComponent('ATOM POS backup ready. Please attach the downloaded file: '+filename),'_blank')}catch(e){}
-    toast('ZIP downloaded — attach it in WhatsApp');
+    if(_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'WhatsApp'})){toast('Share opened');return}
+    _dlBlob(blob,filename);toast('ZIP saved — share it from Downloads via WhatsApp');
   }catch(e){toast('Share failed — try Download')}
 }
 async function _parseBackupFile(file){
@@ -600,47 +599,45 @@ async function renderCoupons(){
   box.innerHTML=list.map(c=>'<div class="sess-item"><div><div class="pn">'+esc(c.code)+'</div><div class="tm">'+(c.type==='pct'?c.value+'%':'₹'+c.value)+' off · Min ₹'+(c.min||0)+(c.active?' · Active':' · Off')+'</div></div><button type="button" class="del" data-id="'+c.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
   $$('#couponList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Delete coupon?','Delete',true)))return;await del('coupons',+b.dataset.id);renderCoupons()});
 }
-function _drawBc(c,code){const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);let x=8;ctx.fillStyle='#000';for(let i=0;i<String(code).length;i++){const n=String(code).charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,6,1.6,h-26);x+=2}x+=1.4}ctx.font='11px monospace';ctx.textAlign='center';ctx.fillText(String(code),w/2,h-4);ctx.font='9px sans-serif';ctx.fillStyle='#64748b';ctx.fillText('ATOM POS',w/2,h-16)}
-function _bcCard(p,code){return '<div class="bc-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:8px 0;text-align:center;background:#fff"><div style="font-weight:700;font-size:13px;margin-bottom:6px">'+esc(p.name)+'</div><canvas width="220" height="72" style="max-width:100%"></canvas><img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data='+encodeURIComponent(code)+'" alt="QR" width="100" height="100" style="margin:8px auto;display:block;border-radius:8px"><div style="font-family:ui-monospace;font-size:12px">'+esc(code)+'</div><div style="font-size:10px;color:#64748b;font-weight:600">ATOM POS</div></div>'}
+function _randBc(){let s='';for(let i=0;i<12;i++)s+=Math.floor(Math.random()*10);return s}
+function _drawBc(c,code){const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);let x=10;ctx.fillStyle='#000';for(let i=0;i<String(code).length;i++){const n=String(code).charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,8,1.8,h-36);x+=2.2}x+=1.6}ctx.fillStyle='#000';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(String(code),w/2,h-18);ctx.font='bold 10px sans-serif';ctx.fillStyle='#0f172a';ctx.fillText('ATOM POS',w/2,h-4)}
+function _bcCardHTML(p,code){return '<div class="bc-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin:8px 0;text-align:center;background:#fff"><div style="font-weight:700;font-size:13px;margin-bottom:8px">'+esc(p.name)+'</div><canvas width="240" height="90" style="max-width:100%;display:block;margin:0 auto"></canvas><div style="position:relative;display:inline-block;margin:10px auto"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(code)+'" alt="QR" width="120" height="120" style="display:block;border-radius:6px"><div style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:9px;font-weight:800;color:#0f172a;background:rgba(255,255,255,.85);padding:2px 0">ATOM POS</div></div><div style="font-family:ui-monospace;font-size:12px;margin-top:4px">'+esc(code)+'</div></div>'}
 function _codesOf(p){const a=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!a.length&&p.sku)a.push(String(p.sku));return a}
-async function _ensureBarcodes(){ // auto-generate missing barcodes for all products
-  const list=await all('products');let n=0;
-  for(const p of list){if(_codesOf(p).length)continue;p.barcode='ATOM'+String(p.id).padStart(8,'0');await put('products',p);n++}
-  return n;
-}
+async function _ensureBarcodes(){const list=await all('products');let n=0;for(const p of list){if(_codesOf(p).length)continue;p.barcode=_randBc();await put('products',p);n++}return n}
+function _fillCanvases(root){root.querySelectorAll('.bc-card').forEach(card=>{const cv=card.querySelector('canvas'),code=(card.querySelector('img')||{}).src||'';const m=/data=([^&]+)/.exec(code);if(cv&&m)_drawBc(cv,decodeURIComponent(m[1]))})}
 async function renderBarcodes(){
-  const gen=await _ensureBarcodes();
-  const list=await all('products');
-  const box=$('#barcodeList');
+  const gen=await _ensureBarcodes(),list=await all('products'),box=$('#barcodeList');
   if(!list.length){box.innerHTML='<div class="empty">No products yet.</div>';return}
-  if(gen)toast('Auto-generated '+gen+' barcode(s)');
-  box.innerHTML=list.map(p=>{
-    const codes=_codesOf(p);
-    return '<div class="sess-item" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:120px"><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(codes.join(', ')||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div style="display:flex;gap:6px"><button type="button" class="btn" data-bc-view="'+p.id+'" style="padding:6px 10px;font-size:12px">View</button><button type="button" class="btn btn-g" data-bc-wa="'+p.id+'" style="padding:6px 10px;font-size:12px">WhatsApp</button></div></div>';
-  }).join('');
+  if(gen)toast('Auto-generated '+gen+' random barcode(s)');
+  box.innerHTML=list.map(p=>{const codes=_codesOf(p);return '<div class="sess-item" style="flex-wrap:wrap;gap:6px"><div style="flex:1;min-width:120px"><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(codes.join(', ')||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div style="display:flex;gap:6px"><button type="button" class="btn" data-bc-view="'+p.id+'" style="padding:6px 10px;font-size:12px">View</button><button type="button" class="btn btn-g" data-bc-wa="'+p.id+'" style="padding:6px 10px;font-size:12px">WhatsApp</button></div></div>'}).join('');
   $$('[data-bc-view]').forEach(b=>b.onclick=async()=>{
     const p=(await all('products')).find(x=>+x.id===+b.dataset.bcView);if(!p)return;
-    const codes=_codesOf(p);const body=$('#bcViewBody');body.innerHTML='';
-    codes.forEach(code=>{const wrap=document.createElement('div');wrap.innerHTML=_bcCard(p,code);const card=wrap.firstChild;const cv=card.querySelector('canvas');if(cv)_drawBc(cv,code);body.appendChild(card)});
-    body.innerHTML+='<button type="button" class="btn btn-p" id="bcPrintOne" style="width:100%;margin-top:8px">Print</button>';
-    $('#bcViewM').classList.add('on');
-    if($('#bcPrintOne'))$('#bcPrintOne').onclick=()=>{const w=window.open('','_blank');w.document.write('<html><head><title>ATOM POS</title><style>body{font-family:sans-serif;text-align:center;padding:16px}.bc-card{page-break-inside:avoid;margin:12px auto}</style></head><body>'+body.innerHTML.replace(/<button[\s\S]*?<\/button>/g,'')+'<script>window.onload=()=>print()<\/script></body></html>');w.document.close()};
+    const codes=_codesOf(p),body=$('#bcViewBody');body.innerHTML='';
+    codes.forEach(code=>{const d=document.createElement('div');d.innerHTML=_bcCardHTML(p,code);const card=d.firstChild;body.appendChild(card);_drawBc(card.querySelector('canvas'),code)});
+    const btn=document.createElement('button');btn.type='button';btn.className='btn btn-p';btn.id='bcPrintOne';btn.style.cssText='width:100%;margin-top:8px';btn.textContent='Print';
+    btn.onclick=()=>{const w=window.open('','_blank');w.document.write('<html><head><title>ATOM POS</title><style>body{font-family:sans-serif;text-align:center;padding:16px}.bc-card{page-break-inside:avoid;margin:12px auto}</style></head><body></body></html>');const b=w.document.body;body.querySelectorAll('.bc-card').forEach(c=>b.appendChild(c.cloneNode(true)));_fillCanvases(b);setTimeout(()=>w.print(),300)};
+    body.appendChild(btn);$('#bcViewM').classList.add('on');
   });
   $$('[data-bc-wa]').forEach(b=>b.onclick=async()=>{
     const p=(await all('products')).find(x=>+x.id===+b.dataset.bcWa);if(!p)return;
-    const code=_codesOf(p)[0]||'';
-    window.open('https://wa.me/?text='+encodeURIComponent('*ATOM POS*\n'+p.name+'\nBarcode: '+code+'\nPrice: '+fmt(p.price)),'_blank');
+    const code=_codesOf(p)[0]||'';const text='*ATOM POS*\n'+p.name+'\nBarcode: '+code+'\nPrice: '+fmt(p.price);
+    try{
+      const c=document.createElement('canvas');c.width=240;c.height=90;_drawBc(c,code);
+      const bcBlob=await new Promise(r=>c.toBlob(r,'image/png'));
+      let qrBlob=null;try{const r=await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(code));qrBlob=await r.blob()}catch(e){}
+      const files=[new File([bcBlob],'barcode-'+code+'.png',{type:'image/png'})];
+      if(qrBlob)files.push(new File([qrBlob],'qr-'+code+'.png',{type:'image/png'}));
+      if(navigator.share&&(!navigator.canShare||navigator.canShare({files}))){await navigator.share({files,title:p.name,text});toast('Pick WhatsApp — images attached');return}
+    }catch(e){if(e&&e.name==='AbortError')return}
+    window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank');
   });
 }
 async function bulkPrintBarcodes(){
-  await _ensureBarcodes();
-  const list=await all('products');
-  if(!list.length)return toast('No products');
-  let html='<html><head><title>ATOM POS Barcodes</title><style>body{font-family:sans-serif;padding:12px}.bc-card{page-break-inside:avoid;border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px;display:inline-block;width:230px;text-align:center;vertical-align:top}</style></head><body><h2 style="font-size:14px;color:#64748b">ATOM POS – Barcode / QR</h2>';
-  for(const p of list)for(const code of _codesOf(p))html+=_bcCard(p,code);
-  html+='</body></html>';
-  const w=window.open('','_blank');w.document.write(html);w.document.close();
-  setTimeout(()=>{try{const cvs=w.document.querySelectorAll('canvas');let i=0;list.forEach(p=>_codesOf(p).forEach(code=>{if(cvs[i])_drawBc(cvs[i++],code)}));w.print()}catch(e){}},500);
+  await _ensureBarcodes();const list=await all('products');if(!list.length)return toast('No products');
+  const w=window.open('','_blank');w.document.write('<html><head><title>ATOM POS Barcodes</title><style>body{font-family:sans-serif;padding:12px}.bc-card{page-break-inside:avoid;border:1px solid #ddd;border-radius:8px;padding:10px;margin:8px;display:inline-block;width:240px;text-align:center;vertical-align:top}</style></head><body><h2 style="font-size:14px;color:#64748b">ATOM POS – Barcode / QR</h2></body></html>');
+  const b=w.document.body;
+  list.forEach(p=>_codesOf(p).forEach(code=>{const d=document.createElement('div');d.innerHTML=_bcCardHTML(p,code);b.appendChild(d.firstChild)}));
+  setTimeout(()=>{_fillCanvases(b);w.print()},500);
 }
 
 
@@ -722,7 +719,7 @@ function savePrefs(){
       const det=new BarcodeDetector({formats:['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','itf']});
       const tick=async()=>{
         if(!loop)return;
-        if(!busy&&v.readyState>=2){busy=1;try{const codes=await det.detect(v);if(codes&&codes[0]&&codes[0].rawValue){const code=codes[0].rawValue;const cur=($('#pBarcode').value||'').trim();$('#pBarcode').value=cur?(cur.split(/[,;|]/).map(s=>s.trim()).includes(code)?cur:cur+','+code):code;toast('Scanned: '+code);stop();return}}catch(e){}busy=0}
+        if(!busy&&v.readyState>=2){busy=1;try{const codes=await det.detect(v);if(codes&&codes[0]&&codes[0].rawValue){const code=codes[0].rawValue;const cur=($('#pBarcode').value||'').trim();const parts=cur?cur.split(/[,;|]/).map(s=>s.trim()).filter(Boolean):[];if(!parts.includes(code))parts.push(code);$('#pBarcode').value=parts.join(',');toast('Barcode / QR saved: '+code);stop();return}}catch(e){}busy=0}
         if(loop)setTimeout(tick,120);
       };
       setTimeout(tick,200);
