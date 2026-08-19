@@ -19,6 +19,7 @@ function showAdminView(id){
     '#viewCoupons':['Coupons','Discount codes',renderCoupons],
     '#viewBarcodes':['Barcodes','Codes for scan',renderBarcodes],
     '#viewProducts':['All products','Tap to edit',null],
+    '#viewProductInfo':['Product info','Read-only catalog',renderProductInfo],
     '#viewSales':['Sales','Invoices & returns',renderSales],
     '#viewCustomers':['Customers','Relations · buyers',renderCustomers],
     '#viewMain':['Admin','Overview & insights',null]
@@ -482,6 +483,34 @@ async function renderShift(){
 }
 
 
+
+async function renderProductInfo(){
+  const listBox=$('#piList'),det=$('#piDetail');if(!listBox)return;
+  det.style.display='none';listBox.style.display='block';
+  if($('#piTitle'))$('#piTitle').textContent='Product info';
+  const list=(await all('products')).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(!list.length){listBox.innerHTML='<div class="empty">No products.</div>';return}
+  listBox.innerHTML=list.map(p=>'<div class="pi-card" data-id="'+p.id+'"><div style="display:flex;justify-content:space-between;gap:10px"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">'+(p.cat||'General')+' · Stock '+(p.stock||0)+'</div></div><div class="pn">'+fmt(p.price)+'</div></div></div>').join('');
+  $$('#piList .pi-card').forEach(c=>c.onclick=()=>showProductInfo(+c.dataset.id));
+}
+async function showProductInfo(id){
+  const p=await getById('products',id);if(!p)return;
+  const listBox=$('#piList'),det=$('#piDetail');
+  listBox.style.display='none';det.style.display='block';
+  if($('#piTitle'))$('#piTitle').textContent=p.name;
+  const rows=[
+    ['Name',p.name],['Category',p.cat||'General'],['Brand',p.brand||'—'],['SKU',p.sku||'—'],['Barcode',p.barcode||'—'],
+    ['HSN/SAC',p.hsn||'—'],['Unit',p.unit||'pcs'],['Sell price',fmt(p.price)],['Cost',fmt(p.cost||0)],
+    ['Stock',String(p.stock||0)],['Min stock',String(p.minStock||0)],['Reorder qty',String(p.reorderQty||0)],
+    ['Tax %',String(p.taxPct||0)],['Tax inclusive',p.taxInclusive?'Yes':'No'],['Supplier',p.supplier||'—'],
+    ['Expiry',p.expiry||'—'],['Description',p.desc||p.description||'—']
+  ];
+  det.innerHTML=(p.photo?'<img class="thumb" src="'+p.photo+'" alt="">':'')+
+    '<button type="button" class="btn" id="piBack" style="margin-bottom:12px">← Back to list</button>'+
+    rows.map(r=>'<div class="row"><span>'+r[0]+'</span><b>'+esc(String(r[1]))+'</b></div>').join('');
+  $('#piBack').onclick=()=>renderProductInfo();
+}
+
 async function renderSales(){
   const box=$('#salesList'),st=$('#salesStats');if(!box)return;
   $$('#salesFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.sf===salesFilter));
@@ -556,6 +585,7 @@ async function renderBarcodes(){
       const a=b.dataset.act;closeDr();
       if(a==='add-product'){openProductModal(null);showAdminView('#viewProducts')}
       else if(a==='all-products'){showAdminView('#viewProducts');refresh()}
+      else if(a==='product-info')showAdminView('#viewProductInfo')
       else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='low'));renderInventory()}
       else if(a==='variants')showAdminView('#viewVariants')
       else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='all'));renderInventory()}

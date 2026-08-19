@@ -96,6 +96,7 @@ function adminMenu(){
 '<div class="adm-sub" id="sub-products">'+
 '<button type="button" data-act="add-product">Add Product</button>'+
 '<button type="button" data-act="all-products">All Products</button>'+
+'<button type="button" data-act="product-info">Product info</button>'+
 '<button type="button" data-act="variants">Variants</button>'+
 '<button type="button" data-act="inventory">Inventory</button>'+
 '<button type="button" data-act="purchase">Purchases</button>'+

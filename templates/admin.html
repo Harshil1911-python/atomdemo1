@@ -60,6 +60,13 @@
 .bulk-row input[type=number]{width:72px;padding:8px;border:1px solid var(--bd);border-radius:8px;font-size:14px;font-family:inherit}
 .bulk-row .bn{flex:1;font-size:13px;font-weight:600;min-width:0}
 .chk{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--m)}.chk input{width:auto}
+.pi-card{background:#f8fafc;border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
+.pi-card:active{background:#eef2ff}
+.pi-detail{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:16px}
+.pi-detail .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.pi-detail .row span{color:var(--m);font-weight:600}
+.pi-detail .row b{font-weight:700;text-align:right}
+.pi-detail .thumb{width:72px;height:72px;border-radius:12px;object-fit:cover;background:#f1f5f9;margin-bottom:12px}
 </style></head><body>
 <div class="app">
 <header class="top">
@@ -72,6 +79,11 @@
   <div class="vhead"><h2 id="pageTitle">Admin</h2><p id="pageSub">Catalog, stock and store controls</p></div>
   <div class="scroll">
     <!-- Overview -->
+    <div class="panel-view" id="viewProductInfo">
+      <div class="sec-title" id="piTitle">Product info</div>
+      <div id="piList"><div class="empty">Loading…</div></div>
+      <div id="piDetail" style="display:none"></div>
+    </div>
     <div class="panel-view" id="viewProducts">
       <div class="sec-title">All products <span style="font-weight:500;color:var(--m);font-size:12px">(tap to edit)</span></div>
       <div class="plist" id="plist"><div class="empty">No products yet.</div></div>
