@@ -4,12 +4,25 @@ function setPage(title,sub){$('#pageTitle').textContent=title;$('#pageSub').text
 function showAdminView(id){
   $$('.panel-view').forEach(v=>v.classList.remove('on'));
   const el=$(id);if(el)el.classList.add('on');
-  if(id==='#viewSessions'){setPage('Sessions','Panel visits in IST');renderSessions()}
-  else if(id==='#viewDatabase'){setPage('Database','Backup, restore & import')}
-  else if(id==='#viewVariants'){setPage('Variants','Size / colour / weight options');renderVariants()}
-  else if(id==='#viewInventory'){setPage('Inventory','Stock levels & adjustments');renderInventory()}
-  else if(id==='#viewPurchase'){setPage('Purchases','Supplier buys & stock in');renderPurchases()}
-  else {setPage('Admin','Catalog, stock and store controls')}
+  const map={
+    '#viewSessions':['Sessions','Panel visits in IST',renderSessions],
+    '#viewDatabase':['Database','Backup, restore & import',null],
+    '#viewVariants':['Variants','Size / colour / weight',renderVariants],
+    '#viewInventory':['Inventory','Stock levels & bulk edit',renderInventory],
+    '#viewPurchase':['Purchases','POs & finance',renderPurchases],
+    '#viewReorder':['Reorder','Suggested purchase qty',renderReorder],
+    '#viewExpiring':['Expiring','Within 30 days',renderExpiring],
+    '#viewSuppliers':['Suppliers','Vendor list',renderSuppliers],
+    '#viewPricelist':['Price list','Default & party prices',renderPricelist],
+    '#viewPayLog':['Payment log','All movements',renderPayLog],
+    '#viewCoupons':['Coupons','Discount codes',renderCoupons],
+    '#viewBarcodes':['Barcodes','Codes for scan',renderBarcodes],
+    '#viewProducts':['All products','Tap to edit',null],
+    '#viewMain':['Admin','Overview & insights',null]
+  };
+  const m=map[id];
+  if(m){setPage(m[0],m[1]);if(m[2])m[2]()}
+  else setPage('Admin','Catalog, stock and store controls');
 }
 
 function renderSessions(){
@@ -117,7 +130,7 @@ function openProductModal(p){
 
 /* ---------- Backup with Web Share ---------- */
 async function doBackup(){
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations')};
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists')};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   const filename='ATOM-backup-'+d+'.json';
@@ -432,10 +445,36 @@ async function renderSuppliers(){
   $$('#supList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Remove supplier?','Delete',true)))return;await del('suppliers',+b.dataset.id);renderSuppliers()});
 }
 async function renderPricelist(){
+  const parties=await all('parties');
+  const sel=$('#plParty');
+  if(sel){const cur=sel.value;sel.innerHTML='<option value="">Default (all)</option>'+parties.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');sel.value=cur||'';if(!sel._bound){sel._bound=1;sel.onchange=()=>renderPricelist()}}
+  const partyId=sel&&sel.value?+sel.value:null;
   const list=(await all('products')).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const pls=await all('pricelists');
   const box=$('#priceList');
   if(!list.length){box.innerHTML='<div class="empty">No products.</div>';return}
-  box.innerHTML=list.map(p=>'<div class="bulk-row" data-id="'+p.id+'"><div class="bn">'+esc(p.name)+'<div style="font-size:11px;color:var(--m)">Cost '+fmt(p.cost||0)+'</div></div><input type="number" min="0" step="0.01" class="bulk-price" value="'+(p.price||0)+'"></div>').join('');
+  box.innerHTML=list.map(p=>{
+    let price=p.price||0;
+    if(partyId){const pl=pls.find(x=>+x.partyId===partyId&&+x.productId===+p.id);if(pl)price=pl.price}
+    return '<div class="bulk-row" data-id="'+p.id+'"><div class="bn">'+esc(p.name)+'<div style="font-size:11px;color:var(--m)">Base '+fmt(p.price||0)+'</div></div><input type="number" min="0" step="0.01" class="bulk-price" value="'+price+'"></div>';
+  }).join('');
+}
+async function renderPayLog(){
+  const rows=[];
+  for(const t of await all('transactions')){
+    rows.push({at:t.date,ist:t.date?new Date(t.date).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):'',dir:(+t.amount||0)<0?'out':'in',amount:Math.abs(+t.amount||0),note:(t.title||'Sale')+' · '+(t.subtitle||''),source:'invoice'});
+  }
+  for(const f of await all('finance')){
+    rows.push({at:f.at,ist:f.ist||'',dir:f.direction||'out',amount:+f.amount||0,note:(f.note||f.type||'Payment')+(f.partyName?' · '+f.partyName:''),source:f.source||f.type||'misc'});
+  }
+  for(const p of await all('purchases')){
+    const tot=+p.total||((+p.cost||0)*(+p.qty||0));
+    rows.push({at:p.at,ist:p.ist||'',dir:'out',amount:tot,note:'PO · '+(p.productName||'')+' × '+(p.qty||0)+' · '+(p.status||''),source:'purchase'});
+  }
+  rows.sort((a,b)=>(b.at||'').localeCompare(a.at||''));
+  const box=$('#payLogList');
+  if(!rows.length){box.innerHTML='<div class="empty">No movements yet.</div>';return}
+  box.innerHTML=rows.slice(0,200).map(r=>'<div class="sess-item"><div><div class="pn">'+(r.dir==='in'?'↓ ':'↑ ')+esc(r.note)+'</div><div class="tm">'+(r.ist||'')+' · '+r.source+'</div></div><div class="pn" style="color:'+(r.dir==='in'?'var(--g)':'var(--r)')+'">'+(r.dir==='in'?'+':'−')+fmt(r.amount)+'</div></div>').join('');
 }
 async function renderCoupons(){
   const list=await all('coupons');
@@ -477,6 +516,7 @@ async function renderBarcodes(){
       else if(a==='coupons')showAdminView('#viewCoupons')
       else if(a==='barcodes')showAdminView('#viewBarcodes')
       else if(a==='database')showAdminView('#viewDatabase')
+      else if(a==='payment-log')showAdminView('#viewPayLog')
       else if(a==='sessions')showAdminView('#viewSessions')
       else if(a==='panel')location.href='/billing'
       else if(a==='sales-today'||a==='sales-all'||a==='unpaid')toast('Sales reports — coming soon')
@@ -505,10 +545,15 @@ async function renderBarcodes(){
     await put('coupons',{code,type:type==='flat'?'flat':'pct',value,min,active:true});toast('Coupon saved');renderCoupons();
   };
   if($('#btnPriceSave'))$('#btnPriceSave').onclick=async()=>{
-    let n=0;for(const row of $$('#priceList .bulk-row')){
+    const partyId=$('#plParty')&&$('#plParty').value?+$('#plParty').value:null;let n=0;
+    for(const row of $$('#priceList .bulk-row')){
       const id=+row.dataset.id,val=+(row.querySelector('.bulk-price')||{}).value;
-      if(!(id>0)||isNaN(val))continue;const pr=await getById('products',id);if(!pr)continue;
-      pr.price=Math.max(0,val);await put('products',pr);n++;
+      if(!(id>0)||isNaN(val))continue;
+      if(partyId){
+        const allp=await all('pricelists');const ex=allp.find(x=>+x.partyId===partyId&&+x.productId===id);
+        if(ex){ex.price=val;await put('pricelists',ex)}else await put('pricelists',{partyId,productId:id,price:val});
+      }else{const pr=await getById('products',id);if(!pr)continue;pr.price=Math.max(0,val);await put('products',pr)}
+      n++;
     }toast('Updated '+n+' prices');renderPricelist();refresh();
   };
 

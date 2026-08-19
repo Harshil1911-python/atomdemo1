@@ -4,7 +4,7 @@ const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const COLORS=['#dbeafe','#dcfce7','#fef3c7','#fce7f3','#e0e7ff','#ffedd5','#f3e8ff','#ecfdf5'];
 let db,_dlgResolve=null;
 
-function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',8);r.onupgradeneeded=e=>{const d=e.target.result;
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS',9);r.onupgradeneeded=e=>{const d=e.target.result;
   if(!d.objectStoreNames.contains('products')){const s=d.createObjectStore('products',{keyPath:'id',autoIncrement:true});s.createIndex('name','name')}
   if(!d.objectStoreNames.contains('transactions'))d.createObjectStore('transactions',{keyPath:'id'});
   if(!d.objectStoreNames.contains('held'))d.createObjectStore('held',{keyPath:'id',autoIncrement:true});
@@ -15,6 +15,7 @@ function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open('AtomPOS
   if(!d.objectStoreNames.contains('coupons'))d.createObjectStore('coupons',{keyPath:'id',autoIncrement:true});
   if(!d.objectStoreNames.contains('parties'))d.createObjectStore('parties',{keyPath:'id',autoIncrement:true});
   if(!d.objectStoreNames.contains('quotations'))d.createObjectStore('quotations',{keyPath:'id',autoIncrement:true});
+  if(!d.objectStoreNames.contains('pricelists'))d.createObjectStore('pricelists',{keyPath:'id',autoIncrement:true});
 };r.onsuccess=e=>{db=e.target.result;res(db)};r.onerror=e=>rej(e.target.error)})}
 const all=s=>new Promise((res,rej)=>{const t=db.transaction(s,'readonly').objectStore(s).getAll();t.onsuccess=()=>res(t.result||[]);t.onerror=()=>rej(t.error)});
 const put=(s,d)=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite').objectStore(s).put(d);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error)});
@@ -109,7 +110,7 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
-'<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
+'<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
 
 function logSession(panel){

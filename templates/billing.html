@@ -117,7 +117,7 @@
 <header class="top">
   <img class="logo" src="/static/logo.png" alt="ATOM">
   <div class="top-r">
-    <button class="ib" id="btnCalc" aria-label="Calculator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg></button>
+    <span class="shift-pill" id="shiftBadge">Shift off</span><button class="ib" id="btnCalc" aria-label="Calculator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg></button>
     <button class="ib" id="btnMenu" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
   </div>
 </header>
@@ -230,13 +230,24 @@ function showView(v){
 $$('.nav').forEach(n=>n.onclick=()=>showView(n.dataset.v));
 
 
-function shiftOn(){return localStorage.getItem('atom_shift')==='1'}
-function setShift(on){localStorage.setItem('atom_shift',on?'1':'0')}
+
+let _lines=[];
+function shiftData(){try{return JSON.parse(localStorage.getItem('atom_shift_data')||'null')}catch(e){return null}}
+function shiftOn(){const s=shiftData();return !!(s&&s.open)}
+function updateShiftBadge(){const el=$('#shiftBadge');if(!el)return;el.textContent=shiftOn()?'Shift on':'Shift off';el.classList.toggle('on',shiftOn())}
+function setShift(on){if(on)localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),sales:0,cash:0,returns:0}));else{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s))}localStorage.setItem('atom_shift',on?'1':'0');updateShiftBadge()}
+function bumpShift(k,a){const s=shiftData();if(!s||!s.open)return;s[k]=(+s[k]||0)+(+a||0);localStorage.setItem('atom_shift_data',JSON.stringify(s))}
+async function searchProducts(q){const qq=(q||'').toLowerCase().trim();if(!qq)return[];return(await all('products')).filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)).slice(0,8)}
+async function searchParties(q){const qq=(q||'').toLowerCase().trim();let L=await all('parties');if(qq)L=L.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));return L.slice(0,8)}
+function bindProdSearch(inp,picks,onPick){$(inp).oninput=async()=>{const f=await searchProducts($(inp).value),box=$(picks);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>₹'+(p.price||0)+' · '+(p.stock||0)+'</small></button>').join('')||($(inp).value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>onPick(+btn.dataset.id,btn))}}
+function bindPartySearch(inp,picks,hid){$(inp).oninput=async()=>{const f=await searchParties($(inp).value),box=$(picks);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>'+(p.phone||'')+' · ₹'+(p.credit||0)+'</small></button>').join('')||($(inp).value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{$(hid).value=btn.dataset.id;$(inp).value=(btn.childNodes[0]&&btn.childNodes[0].textContent)||'';box.innerHTML=''})}}
+function renderLines(sel){const box=$(sel);box.innerHTML=_lines.map((l,i)=>'<div class="line-row"><div class="nm">'+l.name+'</div><input type="number" min="1" value="'+l.qty+'" data-i="'+i+'" class="lq"><button type="button" class="x" data-i="'+i+'">×</button></div>').join('')||'<div class="empty" style="padding:8px">No lines yet</div>';box.querySelectorAll('.lq').forEach(inp=>inp.onchange=()=>{_lines[+inp.dataset.i].qty=Math.max(1,+inp.value||1)});box.querySelectorAll('.x').forEach(btn=>btn.onclick=()=>{_lines.splice(+btn.dataset.i,1);renderLines(sel)})}
+
 function openMoreActions(){
   const on=shiftOn();
   const cell=(a,label,ic)=>'<button type="button" class="act-ico" data-a="'+a+'"><div class="ic">'+ic+'</div><span>'+label+'</span></button>';
   $('#sheetMoreB').innerHTML=
-    '<div class="act-shift"><div><b>Shift</b><small>'+(on?'On duty':'Off duty')+'</small></div><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
+    '<div class="act-shift"><div><b>Shift</b><small>'+(on?('On · ₹'+((shiftData()||{}).sales||0)):'Off duty')+'</small></div><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
     '<div class="act-grid">'+
     cell('purret','Purchase return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`)+
     cell('saleret','Sales return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`)+
@@ -266,88 +277,58 @@ async function runMore(a){
   }
   if(a==='pay'||a==='recv'){
     const dir=a==='pay'?'out':'in';
-    openAct(a==='pay'?'Make payment':'Receive payment',`<div class="af"><label>Amount (₹) *</label><input id="payAmt" type="number" min="0" step="0.01" placeholder="0"><label>Party</label><select id="payParty">${await partyOptions()}</select><label>Note</label><input id="payNote" placeholder="Optional"><button class="save" id="paySave" type="button">Confirm</button></div>`);
+    openAct(a==='pay'?'Make payment':'Receive payment',`<div class="af"><label>Amount (₹) *</label><input id="payAmt" type="number" min="0" step="0.01"><label>Search party</label><input id="payPartyQ" placeholder="Name or phone" autocomplete="off"><div id="payPartyPicks"></div><input type="hidden" id="payPartyId" value=""><label>Note</label><input id="payNote"><button class="save" id="paySave" type="button">Confirm</button></div>`);
+    bindPartySearch('#payPartyQ','#payPartyPicks','#payPartyId');
     $('#paySave').onclick=async()=>{
       const amt=+$('#payAmt').value;if(!(amt>0))return toast('Enter amount');
-      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
-      const partyId=$('#payParty').value;let partyName='';
-      if(partyId){const p=await getById('parties',+partyId);partyName=p?p.name:''}
-      await put('finance',{type:'payment',direction:dir,amount:amt,partyId:partyId?+partyId:null,partyName,note:$('#payNote').value.trim(),at:now.toISOString(),ist});
-      if(dir==='in'){
-        // apply to oldest unpaid if any
-        const txs=(await all('transactions')).filter(t=>t.status==='unpaid').sort((x,y)=>(x.date||'').localeCompare(y.date||''));
-        let left=amt;
-        for(const tx of txs){if(left<=0)break;const due=+tx.amount||0;if(due<=left){tx.status='paid';left-=due;await put('transactions',tx)}else break}
-      }
-      $('#actM').classList.remove('on');toast(dir==='in'?'Payment received':'Payment made');
-      try{await renderTx()}catch(e){}
-    };
-    return;
+      const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      const partyId=+$('#payPartyId').value||null;let partyName='';
+      if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=Math.max(0,(+p.credit||0)+(dir==='in'?-amt:amt));await put('parties',p)}}
+      await put('finance',{type:'payment',direction:dir,amount:amt,partyId,partyName,note:$('#payNote').value.trim()||(dir==='in'?'Receive':'Pay'),at:now.toISOString(),ist,source:'misc'});
+      if(dir==='in'){let left=amt;for(const tx of (await all('transactions')).filter(t=>t.status==='unpaid').sort((x,y)=>(x.date||'').localeCompare(y.date||''))){if(left<=0)break;if((+tx.amount||0)<=left){left-=+tx.amount;tx.status='paid';await put('transactions',tx)}}}
+      if(shiftOn()&&dir==='in')bumpShift('cash',amt);
+      $('#actM').classList.remove('on');toast(dir==='in'?'Payment received':'Payment made');try{await renderTx()}catch(e){}
+    };return;
   }
   if(a==='purret'||a==='saleret'){
-    const isSale=a==='saleret';
-    openAct(isSale?'Sales return':'Purchase return',`<div class="af">
-      <label>Search product *</label><input id="retSearch" placeholder="Type product name" autocomplete="off">
-      <div id="retPicks"></div>
-      <input type="hidden" id="retProd" value="">
-      <label>Qty *</label><input id="retQty" type="number" min="1" value="1">
-      <label>Inventory</label><select id="retInv"><option value="auto">Auto (sales + / purchase −)</option><option value="add">Add to inventory</option><option value="deduct">Deduct from inventory</option><option value="none">No stock change</option></select>
-      <label>Party (optional)</label><input id="retPartyQ" placeholder="Search party" autocomplete="off"><div id="retPartyPicks"></div><input type="hidden" id="retPartyId" value="">
-      <label>Party credit</label><select id="retCredit"><option value="none">No credit change</option><option value="add">Add party credit</option><option value="deduct">Deduct party credit</option></select>
-      <label>Note</label><input id="retNote" placeholder="Optional">
-      <button class="save" id="retSave" type="button">Confirm return</button></div>`);
-    let _retList=[];
-    const fillP=async q=>{
-      _retList=await all('products');const qq=(q||'').toLowerCase();
-      const f=qq?_retList.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)):[];
-      $('#retPicks').innerHTML=f.slice(0,8).map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>Stock '+(p.stock||0)+' · '+fmt(p.price)+'</small></button>').join('')||(qq?'<div class="empty" style="padding:6px">No match</div>':'');
-      $$('#retPicks .pick').forEach(btn=>btn.onclick=()=>{$('#retProd').value=btn.dataset.id;$$('#retPicks .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');$('#retSearch').value=btn.textContent.split('\n')[0]});
-    };
-    $('#retSearch').oninput=e=>fillP(e.target.value);
-    const fillParty=async q=>{
-      const qq=(q||'').toLowerCase();let list=await all('parties');
-      if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq));
-      $('#retPartyPicks').innerHTML=list.slice(0,6).map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>Credit ₹'+(p.credit||0)+'</small></button>').join('');
-      $$('#retPartyPicks .pick').forEach(btn=>btn.onclick=()=>{$('#retPartyId').value=btn.dataset.id;$$('#retPartyPicks .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');$('#retPartyQ').value=btn.textContent.split('\n')[0]});
-    };
-    $('#retPartyQ').oninput=e=>fillParty(e.target.value);
+    const isSale=a==='saleret';_lines=[];let _sel=null;
+    openAct(isSale?'Sales return':'Purchase return',`<div class="af"><label>Search product</label><input id="retSearch" placeholder="Type to find" autocomplete="off"><div id="retPicks"></div><button type="button" class="save" id="retAddLine" style="background:#eef2ff;color:var(--p)">+ Add line item</button><div class="line-rows" id="retLines"></div><label>Inventory</label><select id="retInv"><option value="auto">Auto</option><option value="add">Add to inventory</option><option value="deduct">Deduct inventory</option><option value="none">No change</option></select><label>Search party</label><input id="retPartyQ" placeholder="Optional" autocomplete="off"><div id="retPartyPicks"></div><input type="hidden" id="retPartyId" value=""><label>Party credit</label><select id="retCredit"><option value="none">No change</option><option value="add">Add credit</option><option value="deduct">Deduct credit</option></select><label>Note</label><input id="retNote"><button class="save" id="retSave" type="button">Confirm return</button></div>`);
+    bindProdSearch('#retSearch','#retPicks',async id=>{_sel=await getById('products',id);$('#retSearch').value=_sel.name;$('#retPicks').innerHTML=''});
+    bindPartySearch('#retPartyQ','#retPartyPicks','#retPartyId');renderLines('#retLines');
+    $('#retAddLine').onclick=()=>{if(!_sel)return toast('Pick a product');_lines.push({id:_sel.id,name:_sel.name,price:+_sel.price||0,cost:+_sel.cost||+_sel.price||0,qty:1});_sel=null;$('#retSearch').value='';renderLines('#retLines')};
     $('#retSave').onclick=async()=>{
-      const pid=+$('#retProd').value,qty=+$('#retQty').value;if(!pid||!(qty>0))return toast('Select product & qty');
-      const pr=await getById('products',pid);if(!pr)return toast('Not found');
+      if(!_lines.length)return toast('Add line items');
       const inv=$('#retInv').value,cred=$('#retCredit').value,partyId=+$('#retPartyId').value||null;
-      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
-      const amt=(isSale?(+pr.price||0):(+pr.cost||+pr.price||0))*qty;
-      let stockMode=inv;if(stockMode==='auto')stockMode=isSale?'add':'deduct';
-      if(stockMode==='add')pr.stock=(pr.stock||0)+qty;
-      if(stockMode==='deduct')pr.stock=Math.max(0,(pr.stock||0)-qty);
-      if(stockMode!=='none')await put('products',pr);
-      if(partyId&&cred!=='none'){const pt=await getById('parties',partyId);if(pt){pt.credit=Math.max(0,(+pt.credit||0)+(cred==='add'?amt:-amt));await put('parties',pt)}}
-      if(isSale){await put('finance',{type:'payment',direction:'out',amount:amt,note:'Sales return · '+pr.name+' x'+qty,at:now.toISOString(),ist});await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:pr.name+' × '+qty,amount:-amt,status:'paid',date:now.toISOString(),icon:'cart',items:[{id:pid,name:pr.name,price:pr.price,qty}]});}
-      else{await put('finance',{type:'payment',direction:'in',amount:amt,note:'Purchase return · '+pr.name+' x'+qty,at:now.toISOString(),ist})}
+      const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      let total=0;const items=[];
+      for(const l of _lines){const pr=await getById('products',l.id);if(!pr)continue;const qty=+l.qty||1;const unit=isSale?(+pr.price||0):(+pr.cost||+pr.price||0);total+=unit*qty;let mode=inv==='auto'?(isSale?'add':'deduct'):inv;if(mode==='add')pr.stock=(pr.stock||0)+qty;if(mode==='deduct')pr.stock=Math.max(0,(pr.stock||0)-qty);if(mode!=='none')await put('products',pr);items.push({id:l.id,name:pr.name,price:unit,qty})}
+      if(partyId&&cred!=='none'){const pt=await getById('parties',partyId);if(pt){pt.credit=Math.max(0,(+pt.credit||0)+(cred==='add'?total:-total));await put('parties',pt)}}
+      await put('finance',{type:'payment',direction:isSale?'out':'in',amount:total,note:(isSale?'Sales':'Purchase')+' return',at:now.toISOString(),ist,source:'return',items});
+      if(isSale){await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:items.length+' item(s)',amount:-total,status:'paid',date:now.toISOString(),icon:'cart',items});if(shiftOn())bumpShift('returns',total)}
       $('#actM').classList.remove('on');toast('Return recorded');try{await renderTx();await renderExStCounts()}catch(e){}
-    };
-    return;
+    };return;
   }
   if(a==='quote'){
-    openAct('Quotation',`<div class="af"><label>Customer</label><input id="qName" placeholder="Customer name"><label>Items (one per line: name, qty, price)</label><textarea id="qItems" rows="4" placeholder="Soap, 2, 40&#10;Shampoo, 1, 120"></textarea><label>Note</label><input id="qNote" placeholder="Optional"><button class="save" id="qSave" type="button">Create & share</button></div>`);
+    _lines=[];let _qsel=null;
+    openAct('Quotation',`<div class="af"><label>Search customer</label><input id="qPartyQ" placeholder="Party" autocomplete="off"><div id="qPartyPicks"></div><input type="hidden" id="qPartyId" value=""><label>Search product</label><input id="qSearch" placeholder="Catalog only" autocomplete="off"><div id="qPicks"></div><button type="button" class="save" id="qAddLine" style="background:#eef2ff;color:var(--p)">+ Add line item</button><div class="line-rows" id="qLines"></div><label>Note</label><input id="qNote"><button class="save" id="qSave" type="button">Create & share</button></div>`);
+    bindPartySearch('#qPartyQ','#qPartyPicks','#qPartyId');
+    bindProdSearch('#qSearch','#qPicks',async id=>{_qsel=await getById('products',id);$('#qSearch').value=_qsel.name;$('#qPicks').innerHTML=''});
+    renderLines('#qLines');
+    $('#qAddLine').onclick=async()=>{if(!_qsel)return toast('Pick catalog product');let price=+_qsel.price||0;const partyId=+$('#qPartyId').value||null;if(partyId){try{const pl=(await all('pricelists')).find(x=>+x.partyId===partyId&&+x.productId===+_qsel.id);if(pl)price=+pl.price}catch(e){}}_lines.push({id:_qsel.id,name:_qsel.name,price,qty:1});_qsel=null;$('#qSearch').value='';renderLines('#qLines')};
     $('#qSave').onclick=async()=>{
-      const name=$('#qName').value.trim()||'Customer';
-      const lines=($('#qItems').value||'').trim().split(/\n/).map(l=>l.split(',').map(s=>s.trim())).filter(a=>a[0]);
-      if(!lines.length)return toast('Add at least one item');
-      const items=lines.map(a=>({name:a[0],qty:+a[1]||1,price:+a[2]||0}));
-      const total=items.reduce((s,i)=>s+i.qty*i.price,0);
-      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
-      const q={customer:name,items,total,note:$('#qNote').value.trim(),at:now.toISOString(),ist};
-      await put('quotations',q);
-      let text='*ATOM POS Quotation*\n'+ist+'\nTo: '+name+'\n\n';
-      items.forEach(i=>{text+=i.name+' × '+i.qty+' @ ₹'+i.price+' = ₹'+(i.qty*i.price)+'\n'});
-      text+='\n*Total: ₹'+total.toLocaleString('en-IN')+'*';
-      if(q.note)text+='\n'+q.note;
+      if(!_lines.length)return toast('Add items');
+      const partyId=+$('#qPartyId').value||null;let name=$('#qPartyQ').value.trim()||'Customer';
+      if(partyId){const p=await getById('parties',partyId);if(p)name=p.name}
+      const items=_lines.map(l=>({id:l.id,name:l.name,qty:+l.qty||1,price:+l.price||0}));const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+      const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      await put('quotations',{customer:name,partyId,items,total,note:$('#qNote').value.trim(),at:now.toISOString(),ist});
+      let text='*ATOM POS Quotation*\n'+ist+'\nTo: '+name+'\n\n';items.forEach(i=>{text+=i.name+' × '+i.qty+' @ ₹'+i.price+' = ₹'+(i.qty*i.price)+'\n'});text+='\n*Total: ₹'+total.toLocaleString('en-IN')+'*';
       $('#actM').classList.remove('on');
-      if(navigator.share){try{await navigator.share({title:'Quotation · '+name,text})}catch(e){if(e.name!=='AbortError')toast('Quote saved')}}
-      else{try{await navigator.clipboard.writeText(text);toast('Quote copied')}catch(e){toast('Quote saved · ₹'+total)}}
-    };
+      if(navigator.share){try{await navigator.share({title:'Quotation · '+name,text})}catch(e){if(e.name!=='AbortError')toast('Saved')}}
+      else{try{await navigator.clipboard.writeText(text);toast('Quote copied')}catch(e){toast('Quote saved')}}
+    };return;
   }
+
 }
 
 
@@ -506,7 +487,7 @@ $('#coCartX').onclick=()=>$('#coCart').classList.remove('on');
 $('#cartViewToSale').onclick=openSale;
 $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b))};
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0);let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cart.reduce((a,c)=>a+c.qty*c.price,0);let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid')bumpShift('sales',total);toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 

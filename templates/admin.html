@@ -144,9 +144,16 @@ Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
     </div>
     <div class="panel-view" id="viewPricelist">
       <div class="sec-title">Price list</div>
-      <p style="font-size:13px;color:var(--m);margin-bottom:10px;font-weight:500">Bulk edit sell prices, then save.</p>
+      <p style="font-size:13px;color:var(--m);margin-bottom:10px;font-weight:500">Default prices or party-specific rates.</p>
+      <label style="font-size:12px;font-weight:600;color:var(--m)">Party (blank = default)</label>
+      <select id="plParty" style="width:100%;padding:11px;border:1px solid var(--bd);border-radius:10px;margin:6px 0 12px;font-family:inherit"><option value="">Default (all)</option></select>
       <div class="actions"><button class="btn btn-p" type="button" id="btnPriceSave">Save prices</button></div>
       <div id="priceList"><div class="empty">No products.</div></div>
+    </div>
+    <div class="panel-view" id="viewPayLog">
+      <div class="sec-title">Payment log</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">All money movements — sales, purchases, returns, misc.</p>
+      <div id="payLogList"><div class="empty">No movements yet.</div></div>
     </div>
     <div class="panel-view" id="viewCoupons">
       <div class="sec-title">Coupons</div>
