@@ -56,5 +56,6 @@ html,body{height:100%;font-family:"Plus Jakarta Sans",system-ui,sans-serif;backg
 .dlg-box p{font-size:13px;color:var(--m);line-height:1.5;font-weight:500;margin-bottom:18px}
 .dlg-actions{display:flex;gap:10px}
 .dlg-actions button{flex:1;padding:12px;border:0;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
-.dlg-cancel{background:#f1f5f9;color:var(--t)}.dlg-ok{background:var(--r);color:#fff}
+.dlg-cancel{background:#f1f5f9;color:var(--t)}.dlg-box input{width:100%;margin-top:10px;padding:12px;border:1px solid var(--bd);border-radius:10px;font-size:16px;font-family:inherit;font-weight:700}
+.dlg-ok{background:var(--r);color:#fff}
 .dlg-ok.primary{background:var(--p)}

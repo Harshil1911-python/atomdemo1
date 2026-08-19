@@ -137,7 +137,7 @@
 <header class="top">
   <img class="logo" src="/static/logo.png" alt="ATOM">
   <div class="top-r">
-    <span class="shift-pill" id="shiftBadge">Shift off</span><button class="ib" id="btnCalc" aria-label="Calculator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg></button>
+    <button class="ib" id="btnCalc" aria-label="Calculator"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="10" y2="10"/><line x1="14" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="10" y2="14"/><line x1="14" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="10" y2="18"/><line x1="14" y1="18" x2="16" y2="18"/></svg></button>
     <button class="ib" id="btnMenu" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
   </div>
 </header>
@@ -257,8 +257,18 @@ $$('.nav').forEach(n=>n.onclick=()=>showView(n.dataset.v));
 let _lines=[];
 function shiftData(){try{return JSON.parse(localStorage.getItem('atom_shift_data')||'null')}catch(e){return null}}
 function shiftOn(){const s=shiftData();return !!(s&&s.open)}
-function updateShiftBadge(){const el=$('#shiftBadge');if(!el)return;el.textContent=shiftOn()?'Shift on':'Shift off';el.classList.toggle('on',shiftOn())}
-function setShift(on){if(on){const openCash=+(prompt('Opening cash in drawer (₹)','0')||0);localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:openCash,sales:0,cash:0,upi:0,card:0,other:0,returns:0}))}else{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));const msg='Shift closed\nSales '+fmt(s.sales||0)+'\nCash '+(s.cash||0)+' · UPI '+(s.upi||0)+' · Card '+(s.card||0);toast(msg)}localStorage.setItem('atom_shift',on?'1':'0');updateShiftBadge()}
+async function setShift(on){
+  if(on){
+    const v=await appPrompt('Open shift','Opening cash in drawer (₹)','0');
+    if(v===null)return;
+    localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:+v||0,sales:0,cash:0,upi:0,card:0,other:0,returns:0}));
+    toast('Shift opened · cash ₹'+(+v||0));
+  }else{
+    const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));
+    toast('Shift closed · sales '+fmt(s.sales||0));
+  }
+  localStorage.setItem('atom_shift',on?'1':'0');
+}
 function bumpShift(k,a){const s=shiftData();if(!s||!s.open)return;s[k]=(+s[k]||0)+(+a||0);localStorage.setItem('atom_shift_data',JSON.stringify(s))}
 async function searchProducts(q){const qq=(q||'').toLowerCase().trim();if(!qq)return[];return(await all('products')).filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)).slice(0,8)}
 async function searchParties(q){const qq=(q||'').toLowerCase().trim();let L=await all('parties');if(qq)L=L.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));return L.slice(0,8)}
@@ -299,7 +309,7 @@ function openMoreActions(){
     cell('recv','Receive payment',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`)+
     '</div>';
   $$('#sheetMoreB .act-ico').forEach(btn=>btn.onclick=()=>{closeSheets();runMore(btn.dataset.a)});
-  const sw=$('#shiftSw');if(sw)sw.onclick=e=>{e.stopPropagation();const n=!shiftOn();setShift(n);sw.classList.toggle('on',n);openMoreActions()};
+  const sw=$('#shiftSw');if(sw)sw.onclick=async e=>{e.stopPropagation();await setShift(!shiftOn());openMoreActions()};
   openSheet('#sheetMore');
 }
 
@@ -392,6 +402,19 @@ $('#btnRec').onclick=async()=>{
 $('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;
 $('#btnEx').onclick=async()=>{const list=(await all('products')).filter(p=>p.expiry).map(p=>({...p,d:daysLeft(p.expiry)})).filter(p=>p.d<=7).sort((a,b)=>a.d-b.d);$('#sheetExB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.d<0?'Expired '+Math.abs(p.d)+'d ago':p.d===0?'Expires today':'Expires in '+p.d+'d'}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No products expiring soon</div>';openSheet('#sheetEx')};
 $('#btnSt').onclick=async()=>{const list=(await all('products')).filter(p=>(p.stock||0)<=0);$('#sheetStB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.cat||''}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No out-of-stock products</div>';openSheet('#sheetSt')};
+
+async function checkStockAlerts(){
+  try{
+    const list=await all('products');let low=0,exp=0;
+    for(const p of list){
+      const min=p.minStock||0;if(min>0?(p.stock||0)<=min:(p.stock||0)<=0)low++;
+      if(p.expiry){const d=daysLeft(p.expiry);if(d<=7)exp++}
+    }
+    if(low)notify('ATOM · Low stock',low+' product(s) need attention');
+    if(exp)notify('ATOM · Expiring',exp+' product(s) expire within 7 days');
+  }catch(e){}
+}
+
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}
 
 const keys=['AC','÷','×','⌫','GT','7','8','9','-','MU','4','5','6','+','GST+','1','2','3','=','GST-','.','0','00','%','M+'];
@@ -544,7 +567,7 @@ $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $$('#coPayM button').forEach(btn=>btn.onclick=()=>{payMethod=btn.dataset.m;$$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m===payMethod))});
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b));const pm=$('#coPayM');if(pm)pm.style.display=payStatus==='paid'?'grid':'none'};
 
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();askNotify();checkStockAlerts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
@@ -558,7 +581,7 @@ document.addEventListener('contextmenu',e=>e.preventDefault());
   initShell();
   await openDB();
   await renderTx();
-  await renderExStCounts();
+  await renderExStCounts();askNotify();checkStockAlerts();
 })();
 </script>
 </body>

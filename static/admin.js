@@ -596,7 +596,7 @@ async function renderBarcodes(){
   const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
   if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();_d.classList.add('on');if(_o)_o.classList.add('on')};
   if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
-  if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();toast('No new notifications')};
+  if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();askNotify();toast(Notification.permission==='granted'?'Notifications on':'Allow notifications when prompted')};
   $$('.adm-sub button').forEach(b=>{
     b.onclick=()=>{
       const a=b.dataset.act;closeDr();
@@ -659,7 +659,7 @@ async function renderBarcodes(){
     }toast('Updated '+n+' prices');renderPricelist();refresh();
   };
 
-  if($('#btnShiftOpen'))$('#btnShiftOpen').onclick=()=>{const openCash=+(prompt('Opening cash (₹)','0')||0);localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:openCash,sales:0,cash:0,upi:0,card:0,other:0,returns:0}));localStorage.setItem('atom_shift','1');toast('Shift opened');renderShift()};
+  if($('#btnShiftOpen'))$('#btnShiftOpen').onclick=async()=>{const v=await appPrompt('Open shift','Opening cash in drawer (₹)','0');if(v===null)return;localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:+v||0,sales:0,cash:0,upi:0,card:0,other:0,returns:0}));localStorage.setItem('atom_shift','1');toast('Shift opened');renderShift()};
   if($('#btnShiftClose'))$('#btnShiftClose').onclick=()=>{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));localStorage.setItem('atom_shift','0');toast('Shift closed');renderShift()};
   if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
     const rows=$$('#invList .bulk-row');

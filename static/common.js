@@ -41,10 +41,30 @@ function ensureDlg(){
 function appConfirm(title,msg,okLabel,danger){
   ensureDlg();
   $('#dlgTitle').textContent=title;
-  $('#dlgMsg').textContent=msg;
+  const msgEl=$('#dlgMsg');msgEl.innerHTML='';msgEl.textContent=msg;
+  const inp=$('#dlgInput');if(inp)inp.style.display='none';
   const ok=$('#dlgOk');ok.textContent=okLabel||'OK';ok.className='dlg-ok'+(danger===false?' primary':'');
   $('#appDlg').classList.add('on');
   return new Promise(r=>{_dlgResolve=r});
+}
+function appPrompt(title,msg,def){
+  ensureDlg();
+  $('#dlgTitle').textContent=title;
+  const msgEl=$('#dlgMsg');msgEl.textContent=msg||'';
+  let inp=$('#dlgInput');
+  if(!inp){inp=document.createElement('input');inp.id='dlgInput';inp.type='number';inp.style.cssText='width:100%;margin:12px 0 4px;padding:12px;border:1px solid var(--bd,#e2e8f0);border-radius:10px;font-size:16px;font-family:inherit;font-weight:700';msgEl.after(inp)}
+  inp.style.display='block';inp.value=def!=null?def:'0';
+  const ok=$('#dlgOk');ok.textContent='Continue';ok.className='dlg-ok primary';
+  $('#appDlg').classList.add('on');
+  setTimeout(()=>{try{inp.focus();inp.select()}catch(e){}},100);
+  return new Promise(r=>{_dlgResolve=v=>{r(v===false?null:inp.value);_dlgResolve=null}});
+}
+function askNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')Notification.requestPermission()}
+function notify(title,body){
+  try{
+    if(!('Notification' in window)||Notification.permission!=='granted')return;
+    new Notification(title,{body:body||'',tag:title.slice(0,40),icon:'/static/icon-192.png'});
+  }catch(e){}
 }
 
 function initShell(){
