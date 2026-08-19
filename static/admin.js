@@ -22,8 +22,19 @@ async function refresh(){
   const list=await all('products'),total=list.length,out=list.filter(p=>(p.stock||0)<=0).length;
   const inv=list.reduce((a,p)=>a+(p.price||0)*Math.max(0,p.stock||0),0);
   $('#sTotal').textContent=total;$('#sIn').textContent=total-out;$('#sOut').textContent=out;$('#sVal').textContent=fmt(inv);
-  // Insights from transactions
   const txs=await all('transactions');
+  const dayStart=new Date();dayStart.setHours(0,0,0,0);
+  let todaySale=0,totalSale=0,unpaidAmt=0,paidCnt=0;
+  for(const tx of txs){
+    const amt=+tx.amount||0;
+    if(tx.status!=='unpaid'){totalSale+=amt;paidCnt++;if(tx.date&&new Date(tx.date)>=dayStart)todaySale+=amt}
+    else unpaidAmt+=amt;
+  }
+  if($('#sToday'))$('#sToday').textContent=fmt(todaySale);
+  if($('#sSales'))$('#sSales').textContent=fmt(totalSale);
+  if($('#sUnpaid'))$('#sUnpaid').textContent=fmt(unpaidAmt);
+  if($('#sAvg'))$('#sAvg').textContent=paidCnt?fmt(totalSale/paidCnt):'₹0';
+
   const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
   // Prefer items array if present
   const byProd={}, byCust={};
@@ -378,7 +389,7 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
     const a=b.dataset.act;closeDr();
     if(a==='add-product'){openProductModal(null);showAdminView('#viewMain')}
-    else if(a==='all-products'){showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='none');const pl=$('#plist');if(pl)pl.style.display='flex';refresh()}const ins=$$('.insight');ins.forEach(e=>e.style.display='none');const st=$('.stats');}
+    else if(a==='all-products'){showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='none');const pl=$('#plist');if(pl)pl.style.display='flex';refresh()}
     else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='low')});renderInventory()}
     else if(a==='variants'){showAdminView('#viewVariants')}
     else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='all')});renderInventory()}
@@ -397,20 +408,20 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   if($('#btnErase2'))$('#btnErase2').onclick=()=>$('#btnErase').click();
   document.addEventListener('contextmenu',e=>e.preventDefault());
 
-if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
-  const rows=$$('#invList .bulk-row');
-  if(!rows.length)return toast('Nothing to save');
-  let n=0;
-  for(const row of rows){
-    const id=+row.dataset.id;
-    const val=+(row.querySelector('.bulk-stock')||{}).value;
-    if(!(id>0)||isNaN(val))continue;
-    const p=await getById('products',id);
-    if(!p)continue;
-    p.stock=Math.max(0,val);
-    await put('products',p);n++;
-  }
-  toast('Updated '+n+' products');
-  renderInventory();refresh();
-};
+  if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
+    const rows=$$('#invList .bulk-row');
+    if(!rows.length)return toast('Nothing to save');
+    let n=0;
+    for(const row of rows){
+      const id=+row.dataset.id;
+      const val=+(row.querySelector('.bulk-stock')||{}).value;
+      if(!(id>0)||isNaN(val))continue;
+      const p=await getById('products',id);
+      if(!p)continue;
+      p.stock=Math.max(0,val);
+      await put('products',p);n++;
+    }
+    toast('Updated '+n+' products');
+    renderInventory();refresh();
+  };
 })();

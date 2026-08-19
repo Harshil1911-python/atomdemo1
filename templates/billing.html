@@ -84,7 +84,7 @@
 .calc-d{background:#f1f5f9;border-radius:12px;padding:14px;text-align:right;font-size:30px;font-weight:600;min-height:52px;margin-bottom:12px;word-break:break-all;font-variant-numeric:tabular-nums}
 .calc-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .calc-g button{padding:16px 0;border:0;border-radius:12px;font-size:18px;font-weight:600;background:#f8fafc;cursor:pointer;color:var(--t);font-family:inherit}
-.calc-g button:active{background:#e2e8f0;transform:scale(.94)}.calc-g .op{background:#eef2ff;color:var(--p)}.calc-g .eq{background:var(--p);color:#fff}.calc-g .ac{background:#fef2f2;color:var(--r)}
+.calc-g button:active{background:#e2e8f0;transform:scale(.94)}.calc-g .op{background:#eef2ff;color:var(--p)}.calc-g .eq{background:var(--p);color:#fff}.calc-g .ac{background:#fef2f2;color:var(--r)}.calc-g .fn{background:#f1f5f9;color:#0f172a;font-size:12px;font-weight:700}.calc-g{grid-template-columns:repeat(5,1fr)}.calc-g button{padding:12px 0;font-size:15px}
 .co-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9}
 .co-item span{flex:1;font-size:14px;font-weight:600}.co-item .qtybox{display:flex;align-items:center;gap:8px}
 .co-item .qtybox button{width:26px;height:26px;border-radius:8px;border:0;background:#f1f5f9;font-weight:700;cursor:pointer}
@@ -191,7 +191,7 @@
 </div>
 <script src="/static/common.js"></script>
 <script>
-let plusOpen=false,calcExpr='',cart=[],payStatus='paid';
+let plusOpen=false,calcExpr='',calcMem=0,calcGT=0,cart=[],payStatus='paid';
 const daysLeft=exp=>Math.ceil((new Date(exp)-new Date())/86400000);
 const openSheet=id=>{$(id).classList.add('on');$('#sheetOv').classList.add('on')};
 const closeSheets=()=>{$$('.sheet').forEach(s=>s.classList.remove('on'));$('#sheetOv').classList.remove('on')};
@@ -222,9 +222,22 @@ $('#btnEx').onclick=async()=>{const list=(await all('products')).filter(p=>p.exp
 $('#btnSt').onclick=async()=>{const list=(await all('products')).filter(p=>(p.stock||0)<=0);$('#sheetStB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.cat||''}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No out-of-stock products</div>';openSheet('#sheetSt')};
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}
 
-const keys=['AC','÷','×','⌫','7','8','9','-','4','5','6','+','1','2','3','=','.','0','00'];
-keys.forEach(k=>{const b=document.createElement('button');b.textContent=k;if(['÷','×','-','+'].includes(k))b.className='op';if(k==='=')b.className='eq';if(k==='AC')b.className='ac';b.onclick=()=>calcKey(k);$('#calcG').appendChild(b)});
-function calcKey(k){const d=$('#calcD');if(k==='AC'){calcExpr='';d.textContent='0';return}if(k==='⌫'){calcExpr=calcExpr.slice(0,-1);d.textContent=calcExpr||'0';return}if(k==='='){try{const r=Function('"use strict";return('+calcExpr.replace(/×/g,'*').replace(/÷/g,'/')+')')();d.textContent=r;calcExpr=String(r)}catch{d.textContent='Err';calcExpr=''}return}calcExpr+=k;d.textContent=calcExpr}
+const keys=['AC','÷','×','⌫','GT','7','8','9','-','MU','4','5','6','+','GST+','1','2','3','=','GST-','.','0','00','%','M+'];
+keys.forEach(k=>{const b=document.createElement('button');b.textContent=k;if(['÷','×','-','+','%'].includes(k))b.className='op';if(k==='=')b.className='eq';if(k==='AC')b.className='ac';if(['GT','MU','GST+','GST-','M+'].includes(k))b.className='fn';b.onclick=()=>calcKey(k);$('#calcG').appendChild(b)});
+function calcVal(){try{if(!calcExpr)return 0;return +Function('"use strict";return('+calcExpr.replace(/×/g,'*').replace(/÷/g,'/')+')')()||0}catch{return NaN}}
+function calcKey(k){
+  const d=$('#calcD');
+  if(k==='AC'){calcExpr='';d.textContent='0';return}
+  if(k==='⌫'){calcExpr=calcExpr.slice(0,-1);d.textContent=calcExpr||'0';return}
+  if(k==='='){const r=calcVal();if(isNaN(r)){d.textContent='Err';calcExpr='';return}d.textContent=r;calcExpr=String(r);return}
+  if(k==='GT'){const v=calcVal();if(!isNaN(v)&&calcExpr){calcGT+=v;calcExpr='';d.textContent='GT '+calcGT}else{d.textContent='GT '+calcGT;calcExpr=String(calcGT)}return}
+  if(k==='M+'){const v=calcVal();if(!isNaN(v)){calcMem+=v;d.textContent='M '+calcMem}return}
+  if(k==='MU'){const v=calcVal();if(isNaN(v)||!v)return;const pct=prompt('Markup %', '10');if(pct===null)return;const r=v*(1+(+pct||0)/100);d.textContent=r;calcExpr=String(r);return}
+  if(k==='GST+'){const v=calcVal();if(isNaN(v))return;const rate=prompt('GST % to ADD', '18');if(rate===null)return;const r=v*(1+(+rate||0)/100);d.textContent=(Math.round(r*100)/100);calcExpr=String(d.textContent);return}
+  if(k==='GST-'){const v=calcVal();if(isNaN(v))return;const rate=prompt('GST % to DEDUCT (inclusive)', '18');if(rate===null)return;const r=v/(1+(+rate||0)/100);d.textContent=(Math.round(r*100)/100);calcExpr=String(d.textContent);return}
+  if(k==='%'){const v=calcVal();if(isNaN(v))return;const r=v/100;d.textContent=r;calcExpr=String(r);return}
+  calcExpr+=k;d.textContent=calcExpr;
+}
 $('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD').textContent='0'};
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
