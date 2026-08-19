@@ -174,22 +174,34 @@ async function _nativeShareFile(blob,filename,opts){
 }
 async function doDownload(){try{const {blob,filename}=await _backupBlob();_dlBlob(blob,filename);toast('Backup downloaded')}catch(e){toast('Download failed')}}
 async function doShare(){
+  toast('Preparing backup…');
+  const {blob,filename}=await _backupBlob();
+  const file=new File([blob],filename,{type:'application/zip'});
+  const title='ATOM POS Backup',text='ATOM POS database · '+filename;
   try{
-    const {blob,filename}=await _backupBlob();
-    const title='ATOM POS Backup',text='ATOM POS backup · '+filename;
-    const file=new File([blob],filename,{type:'application/zip'});
-    // System share sheet → pick WhatsApp (file auto-attaches on Android/PWA)
     if(navigator.share){
-      try{
-        if(!navigator.canShare||navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title,text});
-          toast('Pick WhatsApp — file is attached');return;
-        }
-      }catch(e){if(e&&e.name==='AbortError')return}
+      const payload={files:[file],title,text};
+      if(!navigator.canShare||navigator.canShare(payload)){
+        await navigator.share(payload);
+        toast('Pick WhatsApp — ZIP attached');
+        return;
+      }
     }
-    if(_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'WhatsApp'})){toast('Share opened');return}
-    _dlBlob(blob,filename);toast('ZIP saved — share it from Downloads via WhatsApp');
-  }catch(e){toast('Share failed — try Download')}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  try{
+    if(_isNative()){
+      const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
+      if(FS&&Share){
+        const b64=await _blobB64(blob);
+        const path=filename;
+        await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
+        const uriRes=await FS.getUri({path,directory:'CACHE'});
+        const uri=uriRes&&(uriRes.uri||uriRes);
+        if(uri){await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});toast('Pick WhatsApp — ZIP attached');return}
+      }
+    }
+  }catch(e){}
+  _dlBlob(blob,filename);toast('ZIP saved — share from Downloads via WhatsApp');
 }
 async function _parseBackupFile(file){
   const buf=await file.arrayBuffer(),u=new Uint8Array(buf);
@@ -600,7 +612,33 @@ async function renderCoupons(){
   $$('#couponList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Delete coupon?','Delete',true)))return;await del('coupons',+b.dataset.id);renderCoupons()});
 }
 function _randBc(){let s='';for(let i=0;i<12;i++)s+=Math.floor(Math.random()*10);return s}
-function _drawBc(c,code){const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);let x=10;ctx.fillStyle='#000';for(let i=0;i<String(code).length;i++){const n=String(code).charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,8,1.8,h-36);x+=2.2}x+=1.6}ctx.fillStyle='#000';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(String(code),w/2,h-18);ctx.font='bold 10px sans-serif';ctx.fillStyle='#0f172a';ctx.fillText('ATOM POS',w/2,h-4)}
+function _stampWm(ctx,w,h){
+  ctx.save();ctx.globalAlpha=.18;ctx.fillStyle='#0f172a';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  const t='ATOM POS';
+  for(let y=h*0.28;y<=h*0.72;y+=16){for(let x=w*0.2;x<=w*0.8;x+=52){ctx.fillText(t,x,y)}}
+  ctx.restore();
+}
+function _drawBc(c,code){
+  const ctx=c.getContext('2d'),w=c.width,h=c.height;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);
+  let x=10;ctx.fillStyle='#000';
+  for(let i=0;i<String(code).length;i++){const n=String(code).charCodeAt(i)%7+1;for(let b=0;b<n;b++){ctx.fillRect(x,8,1.8,h-36);x+=2.2}x+=1.6}
+  _stampWm(ctx,w,h-28);
+  ctx.fillStyle='#000';ctx.font='bold 12px monospace';ctx.textAlign='center';ctx.fillText(String(code),w/2,h-18);
+  ctx.font='bold 10px sans-serif';ctx.fillStyle='#0f172a';ctx.fillText('ATOM POS',w/2,h-4);
+}
+async function _qrBlobWm(code,size){
+  size=size||200;
+  try{
+    const r=await fetch('https://api.qrserver.com/v1/create-qr-code/?size='+size+'x'+size+'&data='+encodeURIComponent(code));
+    const blob=await r.blob();
+    const bmp=await createImageBitmap(blob);
+    const c=document.createElement('canvas');c.width=size;c.height=size;
+    const ctx=c.getContext('2d');ctx.drawImage(bmp,0,0,size,size);
+    _stampWm(ctx,size,size);
+    return await new Promise(res=>c.toBlob(res,'image/png'));
+  }catch(e){return null}
+}
 function _bcCardHTML(p,code){return '<div class="bc-card" style="border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin:8px 0;text-align:center;background:#fff"><div style="font-weight:700;font-size:13px;margin-bottom:8px">'+esc(p.name)+'</div><canvas width="240" height="90" style="max-width:100%;display:block;margin:0 auto"></canvas><div style="position:relative;display:inline-block;margin:10px auto"><img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(code)+'" alt="QR" width="120" height="120" style="display:block;border-radius:6px"><div style="position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:9px;font-weight:800;color:#0f172a;background:rgba(255,255,255,.85);padding:2px 0">ATOM POS</div></div><div style="font-family:ui-monospace;font-size:12px;margin-top:4px">'+esc(code)+'</div></div>'}
 function _codesOf(p){const a=String(p.barcode||'').split(/[,;|]+/).map(s=>s.trim()).filter(Boolean);if(!a.length&&p.sku)a.push(String(p.sku));return a}
 async function _ensureBarcodes(){const list=await all('products');let n=0;for(const p of list){if(_codesOf(p).length)continue;p.barcode=_randBc();await put('products',p);n++}return n}
@@ -622,9 +660,9 @@ async function renderBarcodes(){
     const p=(await all('products')).find(x=>+x.id===+b.dataset.bcWa);if(!p)return;
     const code=_codesOf(p)[0]||'';const text='*ATOM POS*\n'+p.name+'\nBarcode: '+code+'\nPrice: '+fmt(p.price);
     try{
-      const c=document.createElement('canvas');c.width=240;c.height=90;_drawBc(c,code);
+      const c=document.createElement('canvas');c.width=280;c.height=100;_drawBc(c,code);
       const bcBlob=await new Promise(r=>c.toBlob(r,'image/png'));
-      let qrBlob=null;try{const r=await fetch('https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(code));qrBlob=await r.blob()}catch(e){}
+      const qrBlob=await _qrBlobWm(code,200);
       const files=[new File([bcBlob],'barcode-'+code+'.png',{type:'image/png'})];
       if(qrBlob)files.push(new File([qrBlob],'qr-'+code+'.png',{type:'image/png'}));
       if(navigator.share&&(!navigator.canShare||navigator.canShare({files}))){await navigator.share({files,title:p.name,text});toast('Pick WhatsApp — images attached');return}
@@ -703,7 +741,25 @@ function savePrefs(){
   if($('#restoreFile'))$('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
   if($('#btnBulkPrintBc'))$('#btnBulkPrintBc').onclick=bulkPrintBarcodes;
   if($('#bcViewX'))$('#bcViewX').onclick=()=>$('#bcViewM').classList.remove('on');
-  if($('#pScanBc'))$('#pScanBc').onclick=async()=>{
+  
+  if($('#pQrGallery'))$('#pQrGallery').onchange=async e=>{
+    const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+    try{
+      if(!('BarcodeDetector' in window)){toast('Gallery decode needs Chrome/Edge');return}
+      const bmp=await createImageBitmap(f);
+      const det=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','code_39','upc_a','upc_e','itf']});
+      const codes=await det.detect(bmp);
+      if(!codes||!codes[0]||!codes[0].rawValue){toast('No QR/barcode found in image');return}
+      const code=codes[0].rawValue;
+      const cur=($('#pBarcode').value||'').trim();
+      const parts=cur?cur.split(/[,;|]/).map(s=>s.trim()).filter(Boolean):[];
+      if(!parts.includes(code))parts.push(code);
+      $('#pBarcode').value=parts.join(',');
+      toast('Saved from gallery: '+code);
+    }catch(err){toast('Could not read image')}
+  };
+
+if($('#pScanBc'))$('#pScanBc').onclick=async()=>{
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return toast('Camera not available');
     let ov=document.getElementById('admScanOv');
     if(!ov){ov=document.createElement('div');ov.id='admScanOv';ov.style.cssText='position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column';ov.innerHTML='<video id="admScanVid" playsinline muted autoplay style="flex:1;width:100%;object-fit:cover"></video><div style="padding:14px;background:#111;color:#fff;text-align:center;font-weight:600" id="admScanHint">Point at barcode / QR</div><button type="button" id="admScanClose" style="margin:0 14px 14px;padding:12px;border:0;border-radius:10px;background:#fff;font-weight:700">Close</button>';document.body.appendChild(ov)}
