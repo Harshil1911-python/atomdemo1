@@ -81,6 +81,11 @@
 .sheet-item .si img{width:100%;height:100%;object-fit:cover}
 .sheet-item .sn{font-size:14px;font-weight:600;flex:1}.sheet-item .sn small{display:block;font-weight:500;color:var(--m);font-size:12px;margin-top:2px}
 .sheet-item .sp{font-size:13px;font-weight:700;color:var(--m)}
+.act-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:12px;background:#f8fafc;margin-bottom:8px;border:0;width:100%;text-align:left;font-family:inherit;font-size:14px;font-weight:700;color:var(--t);cursor:pointer}
+.act-row:active{background:#eef2ff;color:var(--p)}
+.act-row .sub{display:block;font-size:11px;font-weight:500;color:var(--m);margin-top:2px}
+.sw{width:44px;height:26px;border-radius:20px;background:#cbd5e1;position:relative;flex-shrink:0;border:0;padding:0}
+.sw.on{background:var(--g)}.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}.sw.on i{left:21px}
 .calc-d{background:#f1f5f9;border-radius:12px;padding:14px;text-align:right;font-size:30px;font-weight:600;min-height:52px;margin-bottom:12px;word-break:break-all;font-variant-numeric:tabular-nums}
 .calc-g{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .calc-g button{padding:16px 0;border:0;border-radius:12px;font-size:18px;font-weight:600;background:#f8fafc;cursor:pointer;color:var(--t);font-family:inherit}
@@ -159,6 +164,7 @@
   </nav>
 </div>
 <div class="sheet-ov" id="sheetOv"></div>
+<div class="sheet" id="sheetMore" style="height:70%;max-height:520px"><div class="sheet-h"><h3>More actions</h3><button type="button" id="sheetMoreX">×</button></div><div class="sheet-b" id="sheetMoreB"></div></div>
 <div class="sheet" id="sheetEx"><div class="sheet-h"><h3>Expiring Soon</h3><button id="sheetExX">×</button></div><div class="sheet-b" id="sheetExB"></div></div>
 <div class="sheet" id="sheetCat"><div class="sheet-h"><h3>Category</h3><button type="button" id="sheetCatX">×</button></div><div class="sheet-b" id="sheetCatB"></div></div>
 <div class="sheet" id="sheetSt"><div class="sheet-h"><h3>Out of Stock</h3><button id="sheetStX">×</button></div><div class="sheet-b" id="sheetStB"></div></div>
@@ -198,6 +204,7 @@
   </div>
   <div class="row2" style="margin-top:12px"><div><label style="font-size:12px;font-weight:600;color:var(--m)">Custom %</label><input id="gstCustom" type="number" min="0" step="0.01" placeholder="e.g. 18" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit"></div><div style="display:flex;align-items:flex-end"><button type="button" class="save" id="gstApply" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit">Apply</button></div></div>
 </div></div></div>
+<div class="modal" id="actM"><div class="mbox"><div class="mhd"><span id="actTitle">Action</span> <button type="button" id="actX">×</button></div><div class="mbd" id="actBody"></div></div></div>
 <div class="toast" id="toast"></div>
 </div>
 <script src="/static/common.js"></script>
@@ -215,7 +222,97 @@ function showView(v){
 }
 $$('.nav').forEach(n=>n.onclick=()=>showView(n.dataset.v));
 
-$('#btnPlus').onclick=()=>{plusOpen=!plusOpen;$('#btnRec').classList.toggle('hid',!plusOpen);$('#btnBil').classList.toggle('hid',!plusOpen)};
+
+function shiftOn(){return localStorage.getItem('atom_shift')==='1'}
+function setShift(on){localStorage.setItem('atom_shift',on?'1':'0')}
+function openMoreActions(){
+  const on=shiftOn();
+  $('#sheetMoreB').innerHTML=
+    '<button type="button" class="act-row" data-a="purret">Purchase return<span class="sub">Return stock to supplier</span></button>'+
+    '<button type="button" class="act-row" data-a="saleret">Sales return<span class="sub">Customer return · restock</span></button>'+
+    '<button type="button" class="act-row" data-a="quote">Quotations<span class="sub">Create & share quote</span></button>'+
+    '<button type="button" class="act-row" data-a="shift" style="cursor:default">Shift <span class="sub">'+(on?'On duty':'Off duty')+'</span></button><div style="display:flex;justify-content:flex-end;margin:-4px 0 10px"><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
+    '<button type="button" class="act-row" data-a="party">Create party<span class="sub">Customer or supplier</span></button>'+
+    '<button type="button" class="act-row" data-a="counter">Counter<span class="sub">Open Photo POS</span></button>'+
+    '<button type="button" class="act-row" data-a="pay">Make payment<span class="sub">Any outgoing payment</span></button>'+
+    '<button type="button" class="act-row" data-a="recv">Receive payment<span class="sub">Any incoming payment</span></button>';
+  $$('#sheetMoreB .act-row').forEach(b=>b.onclick=()=>{const a=b.dataset.a;if(a==='shift')return;closeSheets();runMore(a)});
+  const sw=$('#shiftSw');if(sw)sw.onclick=e=>{e.stopPropagation();const n=!shiftOn();setShift(n);sw.classList.toggle('on',n);openMoreActions()};
+  openSheet('#sheetMore');
+}
+function openAct(title,html){$('#actTitle').textContent=title;$('#actBody').innerHTML=html;$('#actM').classList.add('on')}
+if($('#actX'))$('#actX').onclick=()=>$('#actM').classList.remove('on');
+
+async function productOptions(){return(await all('products')).map(p=>'<option value="'+p.id+'">'+p.name+' (stock '+(p.stock||0)+')</option>').join('')}
+async function partyOptions(){const ps=await all('parties');return'<option value="">Walk-in / none</option>'+ps.map(p=>'<option value="'+p.id+'">'+p.name+'</option>').join('')}
+
+async function runMore(a){
+  if(a==='counter'){showView('photo');return}
+  if(a==='party'){
+    openAct('Create party',`<div class="af"><label>Name *</label><input id="ptName" placeholder="Party name"><label>Phone</label><input id="ptPhone" placeholder="Phone"><label>Type</label><select id="ptType"><option value="customer">Customer</option><option value="supplier">Supplier</option></select><button class="save" id="ptSave" type="button">Save party</button></div>`);
+    $('#ptSave').onclick=async()=>{const n=$('#ptName').value.trim();if(!n)return toast('Name required');await put('parties',{name:n,phone:$('#ptPhone').value.trim(),type:$('#ptType').value});$('#actM').classList.remove('on');toast('Party saved')};
+    return;
+  }
+  if(a==='pay'||a==='recv'){
+    const dir=a==='pay'?'out':'in';
+    openAct(a==='pay'?'Make payment':'Receive payment',`<div class="af"><label>Amount (₹) *</label><input id="payAmt" type="number" min="0" step="0.01" placeholder="0"><label>Party</label><select id="payParty">${await partyOptions()}</select><label>Note</label><input id="payNote" placeholder="Optional"><button class="save" id="paySave" type="button">Confirm</button></div>`);
+    $('#paySave').onclick=async()=>{
+      const amt=+$('#payAmt').value;if(!(amt>0))return toast('Enter amount');
+      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      const partyId=$('#payParty').value;let partyName='';
+      if(partyId){const p=await getById('parties',+partyId);partyName=p?p.name:''}
+      await put('finance',{type:'payment',direction:dir,amount:amt,partyId:partyId?+partyId:null,partyName,note:$('#payNote').value.trim(),at:now.toISOString(),ist});
+      if(dir==='in'){
+        // apply to oldest unpaid if any
+        const txs=(await all('transactions')).filter(t=>t.status==='unpaid').sort((x,y)=>(x.date||'').localeCompare(y.date||''));
+        let left=amt;
+        for(const tx of txs){if(left<=0)break;const due=+tx.amount||0;if(due<=left){tx.status='paid';left-=due;await put('transactions',tx)}else break}
+      }
+      $('#actM').classList.remove('on');toast(dir==='in'?'Payment received':'Payment made');
+      try{await renderTx()}catch(e){}
+    };
+    return;
+  }
+  if(a==='purret'||a==='saleret'){
+    const isSale=a==='saleret';
+    openAct(isSale?'Sales return':'Purchase return',`<div class="af"><label>Product *</label><select id="retProd">${await productOptions()}</select><label>Qty *</label><input id="retQty" type="number" min="1" value="1"><label>Note</label><input id="retNote" placeholder="Optional"><button class="save" id="retSave" type="button">Confirm return</button></div>`);
+    $('#retSave').onclick=async()=>{
+      const pid=+$('#retProd').value,qty=+$('#retQty').value;if(!pid||!(qty>0))return toast('Product & qty required');
+      const pr=await getById('products',pid);if(!pr)return toast('Not found');
+      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      if(isSale){pr.stock=(pr.stock||0)+qty;await put('products',pr);const amt=(+pr.price||0)*qty;await put('finance',{type:'payment',direction:'out',amount:amt,note:'Sales return · '+pr.name+' x'+qty,at:now.toISOString(),ist});await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:pr.name+' × '+qty,amount:-amt,status:'paid',date:now.toISOString(),icon:'cart',items:[{id:pid,name:pr.name,price:pr.price,qty}]});}
+      else{pr.stock=Math.max(0,(pr.stock||0)-qty);await put('products',pr);const amt=(+pr.cost||+pr.price||0)*qty;await put('finance',{type:'payment',direction:'in',amount:amt,note:'Purchase return · '+pr.name+' x'+qty,at:now.toISOString(),ist});}
+      $('#actM').classList.remove('on');toast('Return recorded');try{await renderTx();await renderExStCounts()}catch(e){}
+    };
+    return;
+  }
+  if(a==='quote'){
+    openAct('Quotation',`<div class="af"><label>Customer</label><input id="qName" placeholder="Customer name"><label>Items (one per line: name, qty, price)</label><textarea id="qItems" rows="4" placeholder="Soap, 2, 40&#10;Shampoo, 1, 120"></textarea><label>Note</label><input id="qNote" placeholder="Optional"><button class="save" id="qSave" type="button">Create & share</button></div>`);
+    $('#qSave').onclick=async()=>{
+      const name=$('#qName').value.trim()||'Customer';
+      const lines=($('#qItems').value||'').trim().split(/\n/).map(l=>l.split(',').map(s=>s.trim())).filter(a=>a[0]);
+      if(!lines.length)return toast('Add at least one item');
+      const items=lines.map(a=>({name:a[0],qty:+a[1]||1,price:+a[2]||0}));
+      const total=items.reduce((s,i)=>s+i.qty*i.price,0);
+      const now=new Date();const ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
+      const q={customer:name,items,total,note:$('#qNote').value.trim(),at:now.toISOString(),ist};
+      await put('quotations',q);
+      let text='*ATOM POS Quotation*\n'+ist+'\nTo: '+name+'\n\n';
+      items.forEach(i=>{text+=i.name+' × '+i.qty+' @ ₹'+i.price+' = ₹'+(i.qty*i.price)+'\n'});
+      text+='\n*Total: ₹'+total.toLocaleString('en-IN')+'*';
+      if(q.note)text+='\n'+q.note;
+      $('#actM').classList.remove('on');
+      if(navigator.share){try{await navigator.share({title:'Quotation · '+name,text})}catch(e){if(e.name!=='AbortError')toast('Quote saved')}}
+      else{try{await navigator.clipboard.writeText(text);toast('Quote copied')}catch(e){toast('Quote saved · ₹'+total)}}
+    };
+  }
+}
+
+
+$('#btnPlus').onclick=()=>{
+  if(plusOpen){plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');openMoreActions()}
+  else{plusOpen=true;$('#btnRec').classList.remove('hid');$('#btnBil').classList.remove('hid')}
+};
 $('#btnBil').onclick=()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');showView('photo')};
 $('#btnRec').onclick=async()=>{
   plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');
@@ -228,7 +325,7 @@ $('#btnRec').onclick=async()=>{
   openSheet('#sheetUnpaid');
 };
 
-$('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;
+$('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;
 $('#btnEx').onclick=async()=>{const list=(await all('products')).filter(p=>p.expiry).map(p=>({...p,d:daysLeft(p.expiry)})).filter(p=>p.d<=7).sort((a,b)=>a.d-b.d);$('#sheetExB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.d<0?'Expired '+Math.abs(p.d)+'d ago':p.d===0?'Expires today':'Expires in '+p.d+'d'}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No products expiring soon</div>';openSheet('#sheetEx')};
 $('#btnSt').onclick=async()=>{const list=(await all('products')).filter(p=>(p.stock||0)<=0);$('#sheetStB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.cat||''}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No out-of-stock products</div>';openSheet('#sheetSt')};
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}

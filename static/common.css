@@ -43,7 +43,7 @@ html,body{height:100%;font-family:"Plus Jakarta Sans",system-ui,sans-serif;backg
 .mbd{padding:16px;overflow-y:auto}
 .af{display:flex;flex-direction:column;gap:10px}
 .af label{font-size:12px;font-weight:600;color:var(--m)}
-.af input,.af select{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%;font-family:inherit}
+.af input,.af select,.af textarea{padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;outline:0;width:100%;font-family:inherit}
 .af input:focus,.af select:focus{border-color:var(--p)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .photo-preview{width:80px;height:80px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px dashed var(--bd)}

@@ -34,17 +34,22 @@ async function refresh(){
   if($('#sSales'))$('#sSales').textContent=fmt(totalSale);
   if($('#sAvg'))$('#sAvg').textContent=paidCnt?fmt(totalSale/paidCnt):'₹0';
   // To collect = unpaid sales; to pay = ordered POs; balance = paid in - paid out
-  let toPay=0,paidOut=0;
+  let toPay=0,paidOut=0,finIn=0,finOut=0;
   try{
     for(const po of await all('purchases')){
       const tot=+po.total||((+po.cost||0)*(+po.qty||0));
       if((po.status||'received')==='ordered')toPay+=tot; else paidOut+=tot;
     }
   }catch(e){}
-  const bal=totalSale-paidOut;
+  try{
+    for(const f of await all('finance')){
+      if(f.type==='payment'&&f.direction==='in')finIn+=(+f.amount||0);
+      if(f.type==='payment'&&f.direction==='out')finOut+=(+f.amount||0);
+    }
+  }catch(e){}
   if($('#sCollect'))$('#sCollect').textContent=fmt(unpaidAmt);
   if($('#sPay'))$('#sPay').textContent=fmt(toPay);
-  if($('#sBal'))$('#sBal').textContent=fmt(bal);
+  if($('#sBal'))$('#sBal').textContent=fmt(totalSale+finIn-paidOut-finOut);
 
 
   const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
@@ -112,7 +117,7 @@ function openProductModal(p){
 
 /* ---------- Backup with Web Share ---------- */
 async function doBackup(){
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons')};
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations')};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   const filename='ATOM-backup-'+d+'.json';
@@ -451,6 +456,8 @@ async function renderBarcodes(){
   logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
   initShell();
+  const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
+  if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();_d.classList.add('on');if(_o)_o.classList.add('on')};
   await openDB();
   await refresh();
   const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
