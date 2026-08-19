@@ -32,8 +32,20 @@ async function refresh(){
   }
   if($('#sToday'))$('#sToday').textContent=fmt(todaySale);
   if($('#sSales'))$('#sSales').textContent=fmt(totalSale);
-  if($('#sUnpaid'))$('#sUnpaid').textContent=fmt(unpaidAmt);
   if($('#sAvg'))$('#sAvg').textContent=paidCnt?fmt(totalSale/paidCnt):'₹0';
+  // To collect = unpaid sales; to pay = ordered POs; balance = paid in - paid out
+  let toPay=0,paidOut=0;
+  try{
+    for(const po of await all('purchases')){
+      const tot=+po.total||((+po.cost||0)*(+po.qty||0));
+      if((po.status||'received')==='ordered')toPay+=tot; else paidOut+=tot;
+    }
+  }catch(e){}
+  const bal=totalSale-paidOut;
+  if($('#sCollect'))$('#sCollect').textContent=fmt(unpaidAmt);
+  if($('#sPay'))$('#sPay').textContent=fmt(toPay);
+  if($('#sBal'))$('#sBal').textContent=fmt(bal);
+
 
   const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
   // Prefer items array if present
@@ -61,7 +73,6 @@ async function refresh(){
   if($('#mostSell'))$('#mostSell').textContent=topP?(topP[0]+' · '+topP[1]+' sold'):'No sales data yet';
   if($('#mostCust'))$('#mostCust').textContent=topC?(topC[0]+' · '+fmt(topC[1])):'No customer data yet';
   if($('#mostFast'))$('#mostFast').textContent=topF?(topF[0]+' · '+topF[1]+' units'):'No movement data yet';
-  // Keep hidden plist for all-products menu (still usable)
   const box=$('#plist');
   if(box){
     list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -443,12 +454,12 @@ async function renderBarcodes(){
   await openDB();
   await refresh();
   const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
-  if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='');const pl=$('#plist');if(pl)pl.style.display='none';refresh()};
+  if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
   if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();toast('No new notifications')};
   $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
     const a=b.dataset.act;closeDr();
     if(a==='add-product'){openProductModal(null);showAdminView('#viewMain')}
-    else if(a==='all-products'){showAdminView('#viewMain');$$('.insight').forEach(e=>e.style.display='none');const pl=$('#plist');if(pl)pl.style.display='flex';refresh()}
+    else if(a==='all-products'){showAdminView('#viewProducts');refresh()}
     else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='low')});renderInventory()}
     else if(a==='variants'){showAdminView('#viewVariants')}
     else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='all')});renderInventory()}

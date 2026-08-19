@@ -128,12 +128,12 @@
   </div>
   <div class="view" id="v-text">
     <div class="vhead"><h2>Text POS</h2></div>
-    <div class="tools"><input class="search" id="tsSearch" placeholder="Search product"><button class="tb" id="tsScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button></div>
+    <div class="tools"><input class="search" id="tsSearch" placeholder="Search product"><button class="tb" id="tsCat" type="button">Category</button><button class="tb" id="tsScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button></div>
     <div class="tl" id="tsList"><div class="empty">Start typing to find a product</div></div>
   </div>
   <div class="view" id="v-photo">
     <div class="vhead"><h2>Photo POS</h2></div>
-    <div class="tools"><input class="search" id="psSearch" placeholder="Search"><button class="tb" id="psScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button></div>
+    <div class="tools"><input class="search" id="psSearch" placeholder="Search"><button class="tb" id="psCat" type="button">Category</button><button class="tb" id="psScan"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button></div>
     <div class="pg" id="psGrid"></div>
   </div>
   <div class="view" id="v-held">
@@ -160,6 +160,7 @@
 </div>
 <div class="sheet-ov" id="sheetOv"></div>
 <div class="sheet" id="sheetEx"><div class="sheet-h"><h3>Expiring Soon</h3><button id="sheetExX">×</button></div><div class="sheet-b" id="sheetExB"></div></div>
+<div class="sheet" id="sheetCat"><div class="sheet-h"><h3>Category</h3><button type="button" id="sheetCatX">×</button></div><div class="sheet-b" id="sheetCatB"></div></div>
 <div class="sheet" id="sheetSt"><div class="sheet-h"><h3>Out of Stock</h3><button id="sheetStX">×</button></div><div class="sheet-b" id="sheetStB"></div></div>
 <div class="sheet" id="sheetUnpaid"><div class="sheet-h"><h3>Mark Payment Received</h3><button id="sheetUpX">×</button></div><div class="sheet-b" id="sheetUpB"></div></div>
 <div class="modal" id="calcM"><div class="mbox"><div class="mhd">Calculator <button id="calcX">×</button></div><div class="mbd"><div class="calc-d" id="calcD">0</div><div class="calc-g" id="calcG"></div></div></div></div>
@@ -186,6 +187,16 @@
 <div class="modal" id="varPickM"><div class="mbox"><div class="mhd">Select variant <button type="button" id="varPickX">×</button></div><div class="mbd">
   <p id="varPickTitle" style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500"></p>
   <div class="var-list" id="varPickList"></div>
+</div></div></div>
+<div class="modal" id="gstM"><div class="mbox"><div class="mhd"><span id="gstTitle">GST</span> <button type="button" id="gstX">×</button></div><div class="mbd">
+  <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500" id="gstHint">Choose GST rate</p>
+  <div class="choice-btns" id="gstRates">
+    <button type="button" data-r="5">5%</button>
+    <button type="button" data-r="12">12%</button>
+    <button type="button" data-r="18">18%</button>
+    <button type="button" data-r="28">28%</button>
+  </div>
+  <div class="row2" style="margin-top:12px"><div><label style="font-size:12px;font-weight:600;color:var(--m)">Custom %</label><input id="gstCustom" type="number" min="0" step="0.01" placeholder="e.g. 18" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit"></div><div style="display:flex;align-items:flex-end"><button type="button" class="save" id="gstApply" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:14px;cursor:pointer;font-family:inherit">Apply</button></div></div>
 </div></div></div>
 <div class="toast" id="toast"></div>
 </div>
@@ -232,15 +243,51 @@ function calcKey(k){
   if(k==='='){const r=calcVal();if(isNaN(r)){d.textContent='Err';calcExpr='';return}d.textContent=r;calcExpr=String(r);return}
   if(k==='GT'){const v=calcVal();if(!isNaN(v)&&calcExpr){calcGT+=v;calcExpr='';d.textContent='GT '+calcGT}else{d.textContent='GT '+calcGT;calcExpr=String(calcGT)}return}
   if(k==='M+'){const v=calcVal();if(!isNaN(v)){calcMem+=v;d.textContent='M '+calcMem}return}
-  if(k==='MU'){const v=calcVal();if(isNaN(v)||!v)return;const pct=prompt('Markup %', '10');if(pct===null)return;const r=v*(1+(+pct||0)/100);d.textContent=r;calcExpr=String(r);return}
-  if(k==='GST+'){const v=calcVal();if(isNaN(v))return;const rate=prompt('GST % to ADD', '18');if(rate===null)return;const r=v*(1+(+rate||0)/100);d.textContent=(Math.round(r*100)/100);calcExpr=String(d.textContent);return}
-  if(k==='GST-'){const v=calcVal();if(isNaN(v))return;const rate=prompt('GST % to DEDUCT (inclusive)', '18');if(rate===null)return;const r=v/(1+(+rate||0)/100);d.textContent=(Math.round(r*100)/100);calcExpr=String(d.textContent);return}
+  if(k==='MU'||k==='GST+'||k==='GST-'){const v=calcVal();if(isNaN(v))return;openGstBox(k,v);return}
   if(k==='%'){const v=calcVal();if(isNaN(v))return;const r=v/100;d.textContent=r;calcExpr=String(r);return}
   calcExpr+=k;d.textContent=calcExpr;
 }
 $('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD').textContent='0'};
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
+
+
+let _gstMode=null,_gstBase=0;
+function openGstBox(mode,v){
+  _gstMode=mode;_gstBase=v;
+  $('#gstTitle').textContent=mode==='MU'?'Markup %':(mode==='GST+'?'Add GST':'Deduct GST');
+  $('#gstHint').textContent=mode==='MU'?'Choose markup percent':(mode==='GST+'?'Add GST on amount '+v:'Remove GST from inclusive '+v);
+  $('#gstCustom').value=mode==='MU'?'10':'18';
+  $('#gstM').classList.add('on');
+}
+function applyGstRate(rate){
+  rate=+rate||0;let r=_gstBase;
+  if(_gstMode==='MU'||_gstMode==='GST+')r=_gstBase*(1+rate/100);
+  else if(_gstMode==='GST-')r=_gstBase/(1+rate/100);
+  r=Math.round(r*100)/100;
+  $('#calcD').textContent=r;calcExpr=String(r);
+  $('#gstM').classList.remove('on');
+}
+if($('#gstX'))$('#gstX').onclick=()=>$('#gstM').classList.remove('on');
+if($('#gstApply'))$('#gstApply').onclick=()=>applyGstRate($('#gstCustom').value);
+$$('#gstRates button').forEach(b=>b.onclick=()=>applyGstRate(b.dataset.r));
+
+let catFilter='';
+async function openCategorySheet(target){
+  const cats=[...new Set((await all('products')).map(p=>p.cat||'General'))].sort();
+  $('#sheetCatB').innerHTML='<div class="sheet-item" data-c=""><div class="sn">All categories</div></div>'+cats.map(c=>'<div class="sheet-item" data-c="'+c+'"><div class="sn">'+c+'</div></div>').join('');
+  $$('#sheetCatB .sheet-item').forEach(el=>el.onclick=()=>{
+    catFilter=el.dataset.c||'';
+    closeSheets();
+    if(target==='photo')renderPhoto($('#psSearch').value||'');
+    else renderText($('#tsSearch').value||'');
+  });
+  openSheet('#sheetCat');
+}
+if($('#sheetCatX'))$('#sheetCatX').onclick=closeSheets;
+if($('#psCat'))$('#psCat').onclick=()=>openCategorySheet('photo');
+if($('#tsCat'))$('#tsCat').onclick=()=>openCategorySheet('text');
+
 
 async function renderPhoto(q=''){
   const g=$('#psGrid');
@@ -251,10 +298,9 @@ async function renderPhoto(q=''){
     let list=await all('products');
     if(!Array.isArray(list))list=[];
     const qq=(q||'').toLowerCase().trim();
-    const f=qq?list.filter(p=>{
-      const n=(p.name||'').toLowerCase(),c=(p.cat||'').toLowerCase(),b=String(p.barcode||'');
-      return n.includes(qq)||c.includes(qq)||b.includes(qq);
-    }):list.slice();
+    let f=list.slice();
+    if(catFilter)f=f.filter(p=>(p.cat||'General')===catFilter);
+    if(qq)f=f.filter(p=>{const n=(p.name||'').toLowerCase(),c=(p.cat||'').toLowerCase(),bc=String(p.barcode||'');return n.includes(qq)||c.includes(qq)||bc.includes(qq)});
     f.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     if(!f.length){g.innerHTML='<div class="empty" style="grid-column:1/-1">No products yet. Add from Admin.</div>';return;}
     const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -284,7 +330,7 @@ async function renderPhoto(q=''){
   }
 }
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>toast('Barcode scanning coming soon');
-async function renderText(q){const box=$('#tsList');if(!q.trim()){box.innerHTML='<div class="empty">Start typing to find a product</div>';return}const list=await all('products');const f=list.filter(p=>(p.name||'').toLowerCase().includes(q.toLowerCase())||(p.cat||'').toLowerCase().includes(q.toLowerCase())||(p.barcode||'').includes(q));if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>`<div class="ti" data-id="${p.id}"><div class="ico">${productIcon(p)}</div><span>${p.name}${(p.stock||0)<=0?' · out of stock':''}</span><em>${fmt(p.price)}</em></div>`).join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
+async function renderText(q){const box=$('#tsList');const list=await all('products');let f=list.slice();if(catFilter)f=f.filter(p=>(p.cat||'General')===catFilter);const qq=(q||'').trim().toLowerCase();if(qq)f=f.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq));if(!qq&&!catFilter){box.innerHTML='<div class="empty">Start typing or pick a category</div>';return}if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>'<div class="ti" data-id="'+p.id+'"><div class="ico">'+productIcon(p)+'</div><span>'+p.name+((p.stock||0)<=0?' · out of stock':'')+'</span><em>'+fmt(p.price)+'</em></div>').join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
 $('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>toast('Barcode scanning coming soon');
 function addToCart(p){if(!p)return;const key=p.variantId?('v'+p.variantId):('p'+p.id);const line=cart.find(i=>i._key===key);if(line)line.qty++;else cart.push({_key:key,id:p.id,variantId:p.variantId||null,name:p.name,price:+p.price||0,qty:1});renderCartBar()}
 async function selectProduct(p){if(!p)return;const vars=(await all('variants')).filter(v=>+v.productId===+p.id);if(vars.length){openVariantPicker(p,vars);return}addToCart(p)}

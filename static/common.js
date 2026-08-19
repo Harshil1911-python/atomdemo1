@@ -96,8 +96,6 @@ function adminMenu(){
 '<button type="button" data-act="purchase">Purchases</button>'+
 '<button type="button" data-act="suppliers">Suppliers</button>'+
 '<button type="button" data-act="reorder">Reorder</button>'+
-'<button type="button" data-act="low-stock">Low Stock</button>'+
-'<button type="button" data-act="expiring">Expiring</button>'+
 '<button type="button" data-act="pricelist">Price list</button>'+
 '<button type="button" data-act="coupons">Coupons</button>'+
 '<button type="button" data-act="barcodes">Barcodes</button>'+
