@@ -127,6 +127,9 @@
 .co-item .qtybox{display:flex;align-items:center;gap:8px}
 .co-item .qtybox button{width:28px;height:28px;border-radius:8px;border:1px solid var(--bd);background:#f8fafc;font-weight:700;cursor:pointer}
 
+.pay-m{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
+.pay-m button{padding:10px 6px;border:1px solid var(--bd);border-radius:10px;background:#f8fafc;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--m)}
+.pay-m button.on{background:var(--p);color:#fff;border-color:var(--p)}
 </style>
 </head>
 <body>
@@ -213,6 +216,7 @@
   <div class="co-sub"><span>Subtotal</span><span id="coSub">₹0</span></div>
   <div class="co-total"><span>Total</span><span id="coTotal">₹0</span></div>
   <div class="seg" id="coSeg"><button class="on" data-s="paid">Paid now</button><button data-s="unpaid">Unpaid / Credit</button></div>
+  <div class="pay-m" id="coPayM"><button type="button" class="on" data-m="cash">Cash</button><button type="button" data-m="upi">UPI</button><button type="button" data-m="card">Card</button><button type="button" data-m="other">Other</button></div>
   <button class="save" id="coSave" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;font-family:inherit">Confirm Sale</button>
 </div></div></div>
 
@@ -235,7 +239,7 @@
 </div>
 <script src="/static/common.js"></script>
 <script>
-let plusOpen=false,calcExpr='',calcMem=0,calcGT=0,cart=[],payStatus='paid';
+let plusOpen=false,calcExpr='',calcMem=0,calcGT=0,cart=[],payStatus='paid',payMethod='cash';
 const daysLeft=exp=>Math.ceil((new Date(exp)-new Date())/86400000);
 const openSheet=id=>{$(id).classList.add('on');$('#sheetOv').classList.add('on')};
 const closeSheets=()=>{$$('.sheet').forEach(s=>s.classList.remove('on'));$('#sheetOv').classList.remove('on')};
@@ -254,7 +258,7 @@ let _lines=[];
 function shiftData(){try{return JSON.parse(localStorage.getItem('atom_shift_data')||'null')}catch(e){return null}}
 function shiftOn(){const s=shiftData();return !!(s&&s.open)}
 function updateShiftBadge(){const el=$('#shiftBadge');if(!el)return;el.textContent=shiftOn()?'Shift on':'Shift off';el.classList.toggle('on',shiftOn())}
-function setShift(on){if(on)localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),sales:0,cash:0,returns:0}));else{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s))}localStorage.setItem('atom_shift',on?'1':'0');updateShiftBadge()}
+function setShift(on){if(on){const openCash=+(prompt('Opening cash in drawer (₹)','0')||0);localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:openCash,sales:0,cash:0,upi:0,card:0,other:0,returns:0}))}else{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));const msg='Shift closed\nSales '+fmt(s.sales||0)+'\nCash '+(s.cash||0)+' · UPI '+(s.upi||0)+' · Card '+(s.card||0);toast(msg)}localStorage.setItem('atom_shift',on?'1':'0');updateShiftBadge()}
 function bumpShift(k,a){const s=shiftData();if(!s||!s.open)return;s[k]=(+s[k]||0)+(+a||0);localStorage.setItem('atom_shift_data',JSON.stringify(s))}
 async function searchProducts(q){const qq=(q||'').toLowerCase().trim();if(!qq)return[];return(await all('products')).filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)).slice(0,8)}
 async function searchParties(q){const qq=(q||'').toLowerCase().trim();let L=await all('parties');if(qq)L=L.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));return L.slice(0,8)}
@@ -520,7 +524,15 @@ if($('#coName')){$('#coName').oninput=e=>{renderCustPicks(e.target.value);$('#co
 
 ['coDiscPct','coDiscAmt'].forEach(id=>{const el=$('#'+id);if(el)el.oninput=()=>renderCoItems()});
 
-function openSale(){$('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustList'))$('#coCustList').innerHTML='';if($('#coDiscPct'))$('#coDiscPct').value='';if($('#coDiscAmt'))$('#coDiscAmt').value='';payStatus='paid';$$('#coSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s==='paid'));renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on')}
+function openSale(){
+  $('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustList')){$('#coCustList').innerHTML='';$('#coCustList').classList.remove('on')}
+  if($('#coDiscPct'))$('#coDiscPct').value='';if($('#coDiscAmt'))$('#coDiscAmt').value='';
+  payStatus='paid';payMethod='cash';
+  $$('#coSeg button').forEach(x=>x.classList.toggle('on',x.dataset.s==='paid'));
+  $$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m==='cash'));
+  const pm=$('#coPayM');if(pm)pm.style.display='grid';
+  renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on');
+}
 
 $('#btnCheckout').onclick=()=>{if(!cart.length)return;$('#coChoice').classList.add('on')};
 $('#coChoiceX').onclick=()=>$('#coChoice').classList.remove('on');
@@ -529,8 +541,10 @@ $('#btnGoSale').onclick=openSale;
 $('#coCartX').onclick=()=>$('#coCart').classList.remove('on');
 $('#cartViewToSale').onclick=openSale;
 $('#coX').onclick=()=>$('#coM').classList.remove('on');
-$('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b))};
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid')bumpShift('sales',total);toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
+$$('#coPayM button').forEach(btn=>btn.onclick=()=>{payMethod=btn.dataset.m;$$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m===payMethod))});
+$('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b));const pm=$('#coPayM');if(pm)pm.style.display=payStatus==='paid'?'grid':'none'};
+
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');await renderTx();await renderExStCounts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 

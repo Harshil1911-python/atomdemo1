@@ -42,11 +42,16 @@ async function refresh(){
   if($('#sTotal'))$('#sTotal').textContent=total;if($('#sIn'))$('#sIn').textContent=total-out;if($('#sOut'))$('#sOut').textContent=out;if($('#sVal'))$('#sVal').textContent=fmt(inv);
   const txs=await all('transactions');
   const dayStart=new Date();dayStart.setHours(0,0,0,0);
-  let todaySale=0,totalSale=0,unpaidAmt=0,paidCnt=0;
+  let todaySale=0,totalSale=0,unpaidAmt=0,paidCnt=0,cashR=0,upiR=0,cardR=0,otherR=0;
   for(const tx of txs){
     const amt=+tx.amount||0;
-    if(tx.status!=='unpaid'){totalSale+=amt;paidCnt++;if(tx.date&&new Date(tx.date)>=dayStart)todaySale+=amt}
-    else unpaidAmt+=amt;
+    if(tx.status==='unpaid')unpaidAmt+=amt;
+    else if(amt>0){
+      totalSale+=amt;paidCnt++;
+      if(tx.date&&new Date(tx.date)>=dayStart)todaySale+=amt;
+      const m=(tx.payMethod||'cash').toLowerCase();
+      if(m==='upi'||m==='bank')upiR+=amt;else if(m==='card')cardR+=amt;else if(m==='other')otherR+=amt;else cashR+=amt;
+    }
   }
   if($('#sToday'))$('#sToday').textContent=fmt(todaySale);
   if($('#sSales'))$('#sSales').textContent=fmt(totalSale);
@@ -68,6 +73,12 @@ async function refresh(){
   if($('#sCollect'))$('#sCollect').textContent=fmt(unpaidAmt);
   if($('#sPay'))$('#sPay').textContent=fmt(toPay);
   if($('#sBal'))$('#sBal').textContent=fmt(totalSale+finIn-paidOut-finOut);
+  if($('#sPaid'))$('#sPaid').textContent=fmt(totalSale);
+  if($('#sUnpaidRev'))$('#sUnpaidRev').textContent=fmt(unpaidAmt);
+  if($('#sCash'))$('#sCash').textContent=fmt(cashR);
+  if($('#sUpi'))$('#sUpi').textContent=fmt(upiR);
+  if($('#sCard'))$('#sCard').textContent=fmt(cardR);
+  if($('#sOther'))$('#sOther').textContent=fmt(otherR);
 
 
   const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
@@ -473,13 +484,19 @@ async function renderShift(){
   const s=shiftData(),box=$('#shiftStats');if(!box)return;
   const open=!!(s&&s.open);
   const ist=t=>{try{return new Date(t).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true})}catch(e){return '—'}}
+  const exp=(+((s&&s.openingCash)||0))+(+(s&&s.cash||0))-(+(s&&s.returns||0));
   box.innerHTML=
     '<div class="stat '+(open?'green':'')+'"><div class="lbl">Status</div><div class="val" style="font-size:16px">'+(open?'Open':'Closed')+'</div></div>'+
     '<div class="stat purple"><div class="lbl">Sales</div><div class="val" style="font-size:16px">'+fmt((s&&s.sales)||0)+'</div></div>'+
-    '<div class="stat green"><div class="lbl">Cash in</div><div class="val" style="font-size:16px">'+fmt((s&&s.cash)||0)+'</div></div>'+
+    '<div class="stat"><div class="lbl">Opening cash</div><div class="val" style="font-size:16px">'+fmt((s&&s.openingCash)||0)+'</div></div>'+
+    '<div class="stat green"><div class="lbl">Cash</div><div class="val" style="font-size:16px">'+fmt((s&&s.cash)||0)+'</div></div>'+
+    '<div class="stat purple"><div class="lbl">UPI</div><div class="val" style="font-size:16px">'+fmt((s&&s.upi)||0)+'</div></div>'+
+    '<div class="stat"><div class="lbl">Card</div><div class="val" style="font-size:16px">'+fmt((s&&s.card)||0)+'</div></div>'+
+    '<div class="stat"><div class="lbl">Other</div><div class="val" style="font-size:16px">'+fmt((s&&s.other)||0)+'</div></div>'+
     '<div class="stat red"><div class="lbl">Returns</div><div class="val" style="font-size:16px">'+fmt((s&&s.returns)||0)+'</div></div>'+
-    '<div class="stat"><div class="lbl">Opened</div><div class="val" style="font-size:13px">'+(s&&s.openedAt?ist(s.openedAt):'—')+'</div></div>'+
-    '<div class="stat"><div class="lbl">Closed</div><div class="val" style="font-size:13px">'+(s&&s.closedAt?ist(s.closedAt):'—')+'</div></div>';
+    '<div class="stat green"><div class="lbl">Expected cash</div><div class="val" style="font-size:16px">'+fmt(exp)+'</div></div>'+
+    '<div class="stat"><div class="lbl">Opened</div><div class="val" style="font-size:12px">'+(s&&s.openedAt?ist(s.openedAt):'—')+'</div></div>'+
+    '<div class="stat"><div class="lbl">Closed</div><div class="val" style="font-size:12px">'+(s&&s.closedAt?ist(s.closedAt):'—')+'</div></div>';
 }
 
 
@@ -642,7 +659,7 @@ async function renderBarcodes(){
     }toast('Updated '+n+' prices');renderPricelist();refresh();
   };
 
-  if($('#btnShiftOpen'))$('#btnShiftOpen').onclick=()=>{localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),sales:0,cash:0,returns:0}));localStorage.setItem('atom_shift','1');toast('Shift opened');renderShift()};
+  if($('#btnShiftOpen'))$('#btnShiftOpen').onclick=()=>{const openCash=+(prompt('Opening cash (₹)','0')||0);localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:openCash,sales:0,cash:0,upi:0,card:0,other:0,returns:0}));localStorage.setItem('atom_shift','1');toast('Shift opened');renderShift()};
   if($('#btnShiftClose'))$('#btnShiftClose').onclick=()=>{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));localStorage.setItem('atom_shift','0');toast('Shift closed');renderShift()};
   if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
     const rows=$$('#invList .bulk-row');
