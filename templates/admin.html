@@ -150,6 +150,24 @@ Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
       <div class="actions"><button class="btn btn-p" type="button" id="btnPriceSave">Save prices</button></div>
       <div id="priceList"><div class="empty">No products.</div></div>
     </div>
+    
+    <div class="panel-view" id="viewSales">
+      <div class="sec-title" id="salesTitle">Sales</div>
+      <div class="chips" id="salesFilter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button type="button" class="chip on" data-sf="today">Today</button>
+        <button type="button" class="chip" data-sf="all">All</button>
+        <button type="button" class="chip" data-sf="unpaid">Unpaid</button>
+        <button type="button" class="chip" data-sf="returns">Returns</button>
+      </div>
+      <div class="stats" id="salesStats" style="margin-bottom:12px"></div>
+      <div id="salesList"><div class="empty">No sales yet.</div></div>
+    </div>
+    <div class="panel-view" id="viewCustomers">
+      <div class="sec-title">Customers</div>
+      <div class="actions"><button type="button" class="btn btn-p" id="btnAddCustomer">+ Add customer</button></div>
+      <div id="custList"><div class="empty">No customers yet.</div></div>
+    </div>
+
     <div class="panel-view" id="viewShift">
       <div class="sec-title">Shift info</div>
       <div class="stats" id="shiftStats" style="margin-bottom:14px"></div>

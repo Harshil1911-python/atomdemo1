@@ -19,6 +19,8 @@ function showAdminView(id){
     '#viewCoupons':['Coupons','Discount codes',renderCoupons],
     '#viewBarcodes':['Barcodes','Codes for scan',renderBarcodes],
     '#viewProducts':['All products','Tap to edit',null],
+    '#viewSales':['Sales','Invoices & returns',renderSales],
+    '#viewCustomers':['Customers','Relations · buyers',renderCustomers],
     '#viewMain':['Admin','Overview & insights',null]
   };
   const m=map[id];
@@ -32,6 +34,7 @@ function renderSessions(){
   box.innerHTML=list.map(s=>'<div class="sess-item"><span class="pn">'+s.panel+'</span><span class="tm">'+s.ist+' IST</span></div>').join('');
 }
 
+let salesFilter='today';
 async function refresh(){
   const list=await all('products'),total=list.length,out=list.filter(p=>(p.stock||0)<=0).length;
   const inv=list.reduce((a,p)=>a+(p.price||0)*Math.max(0,p.stock||0),0);
@@ -439,11 +442,14 @@ async function renderExpiring(){
   box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">'+(p.d<0?('Expired '+Math.abs(p.d)+'d ago'):(p.d===0?'Expires today':p.d+'d left'))+'</div></div><div class="pn">'+fmt(p.price)+'</div></div>').join('');
 }
 async function renderSuppliers(){
-  const list=await all('suppliers');
   const box=$('#supList');
+  if(!box)return;
+  let list=await all('suppliers');
+  try{const parties=(await all('parties')).filter(p=>(p.type||'')==='supplier');
+    for(const p of parties){if(!list.some(s=>(s.name||'').toLowerCase()===(p.name||'').toLowerCase()))list.push({id:'p'+p.id,name:p.name,phone:p.phone,city:'',partyId:p.id})}
+  }catch(e){}
   if(!list.length){box.innerHTML='<div class="empty">No suppliers yet.</div>';return}
-  box.innerHTML=list.map(s=>'<div class="sess-item"><div><div class="pn">'+esc(s.name)+'</div><div class="tm">'+esc(s.phone||'')+(s.city?' · '+esc(s.city):'')+'</div></div><button type="button" class="del" data-id="'+s.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
-  $$('#supList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Remove supplier?','Delete',true)))return;await del('suppliers',+b.dataset.id);renderSuppliers()});
+  box.innerHTML=list.map(s=>'<div class="sess-item"><div><div class="pn">'+esc(s.name)+'</div><div class="tm">'+(s.phone?esc(s.phone):'')+(s.city?' · '+esc(s.city):'')+'</div></div></div>').join('');
 }
 async function renderPricelist(){
   const parties=await all('parties');
@@ -473,6 +479,35 @@ async function renderShift(){
     '<div class="stat red"><div class="lbl">Returns</div><div class="val" style="font-size:16px">'+fmt((s&&s.returns)||0)+'</div></div>'+
     '<div class="stat"><div class="lbl">Opened</div><div class="val" style="font-size:13px">'+(s&&s.openedAt?ist(s.openedAt):'—')+'</div></div>'+
     '<div class="stat"><div class="lbl">Closed</div><div class="val" style="font-size:13px">'+(s&&s.closedAt?ist(s.closedAt):'—')+'</div></div>';
+}
+
+
+async function renderSales(){
+  const box=$('#salesList'),st=$('#salesStats');if(!box)return;
+  $$('#salesFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.sf===salesFilter));
+  if($('#salesTitle'))$('#salesTitle').textContent={today:'Today sales',all:'All sales',unpaid:'Unpaid',returns:'Returns'}[salesFilter]||'Sales';
+  let txs=await all('transactions');
+  const dayStart=new Date();dayStart.setHours(0,0,0,0);
+  if(salesFilter==='today')txs=txs.filter(t=>t.date&&new Date(t.date)>=dayStart);
+  else if(salesFilter==='unpaid')txs=txs.filter(t=>t.status==='unpaid');
+  else if(salesFilter==='returns')txs=txs.filter(t=>(+t.amount||0)<0||/return/i.test(t.title||''));
+  txs.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  let sum=0,unpaid=0,cnt=0;
+  for(const t of txs){const a=+t.amount||0;sum+=a;cnt++;if(t.status==='unpaid')unpaid+=a}
+  if(st)st.innerHTML='<div class="stat green"><div class="lbl">Total</div><div class="val" style="font-size:15px">'+fmt(sum)+'</div></div><div class="stat"><div class="lbl">Bills</div><div class="val">'+cnt+'</div></div><div class="stat red"><div class="lbl">Unpaid</div><div class="val" style="font-size:15px">'+fmt(unpaid)+'</div></div>';
+  if(!txs.length){box.innerHTML='<div class="empty">No sales in this view.</div>';return}
+  box.innerHTML=txs.map(t=>{
+    const a=+t.amount||0;
+    const when=t.date?new Date(t.date).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}):'';
+    return '<div class="sess-item"><div><div class="pn">'+esc(t.title||'Sale')+'</div><div class="tm">'+esc(t.subtitle||'')+' · '+when+(t.status==='unpaid'?' · Unpaid':'')+'</div></div><div class="pn" style="color:'+(a<0?'var(--r)':(t.status==='unpaid'?'var(--m)':'var(--g)'))+'">'+fmt(a)+'</div></div>';
+  }).join('');
+}
+async function renderCustomers(){
+  const box=$('#custList');if(!box)return;
+  const list=(await all('parties')).filter(p=>(p.type||'customer')!=='supplier').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(!list.length){box.innerHTML='<div class="empty">No customers yet. Add from here or Billing → Create party.</div>';return}
+  box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">'+(p.phone?esc(p.phone)+' · ':'')+'Credit '+fmt(p.credit||0)+'</div></div><button type="button" class="del" data-id="'+p.id+'" style="width:32px;height:32px;border:0;border-radius:8px;background:#fee2e2;color:var(--r)">×</button></div>').join('');
+  $$('#custList .del').forEach(b=>b.onclick=async()=>{if(!(await appConfirm('Delete','Remove customer?','Delete',true)))return;await del('parties',+b.dataset.id);renderCustomers()});
 }
 
 async function renderPayLog(){
@@ -536,8 +571,11 @@ async function renderBarcodes(){
       else if(a==='shift')showAdminView('#viewShift')
       else if(a==='sessions')showAdminView('#viewSessions')
       else if(a==='panel')location.href='/billing'
-      else if(a==='sales-today'||a==='sales-all'||a==='unpaid')toast('Sales reports — coming soon')
-      else if(a==='customers')toast('Customers — coming soon')
+      else if(a==='sales-today'){salesFilter='today';showAdminView('#viewSales')}
+      else if(a==='sales-all'){salesFilter='all';showAdminView('#viewSales')}
+      else if(a==='unpaid'){salesFilter='unpaid';showAdminView('#viewSales')}
+      else if(a==='sales-returns'){salesFilter='returns';showAdminView('#viewSales')}
+      else if(a==='customers')showAdminView('#viewCustomers')
     };
   });
   try{await openDB();await refresh()}catch(e){console.error(e)}
@@ -553,7 +591,7 @@ async function renderBarcodes(){
   if($('#btnAddSupplier'))$('#btnAddSupplier').onclick=async()=>{
     const name=prompt('Supplier name');if(!name)return;
     const phone=prompt('Phone','')||'';const city=prompt('City','')||'';
-    await put('suppliers',{name:name.trim(),phone,city});toast('Supplier added');renderSuppliers();
+    await put('suppliers',{name:name.trim(),phone,city});await put('parties',{name:name.trim(),phone,type:'supplier',credit:0});toast('Supplier added');renderSuppliers();
   };
   if($('#btnAddCoupon'))$('#btnAddCoupon').onclick=async()=>{
     const code=(prompt('Coupon code')||'').trim().toUpperCase();if(!code)return;

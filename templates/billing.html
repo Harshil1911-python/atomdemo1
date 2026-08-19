@@ -172,9 +172,6 @@
 <div class="sheet-ov" id="sheetOv"></div>
 <div class="sheet" id="sheetMore" style="height:70%;max-height:520px"><div class="sheet-h"><h3>More actions</h3><button type="button" id="sheetMoreX">×</button></div><div class="sheet-b" id="sheetMoreB"></div></div>
 <div class="sheet" id="sheetEx"><div class="sheet-h"><h3>Expiring Soon</h3><button id="sheetExX">×</button></div><div class="sheet-b" id="sheetExB"></div></div>
-<div class="sheet pick-drawer" id="sheetPick"><div class="sheet-h"><h3 id="sheetPickTitle">Select</h3><button type="button" id="sheetPickX">×</button></div>
-  <div style="padding:10px 14px 0;flex-shrink:0"><input class="search" id="sheetPickQ" placeholder="Search…" autocomplete="off" style="width:100%"></div>
-  <div class="sheet-b" id="sheetPickB"></div></div>
 <div class="sheet" id="sheetCat"><div class="sheet-h"><h3>Category</h3><button type="button" id="sheetCatX">×</button></div><div class="sheet-b" id="sheetCatB"></div></div>
 <div class="sheet" id="sheetSt"><div class="sheet-h"><h3>Out of Stock</h3><button id="sheetStX">×</button></div><div class="sheet-b" id="sheetStB"></div></div>
 <div class="sheet" id="sheetUnpaid"><div class="sheet-h"><h3>Mark Payment Received</h3><button id="sheetUpX">×</button></div><div class="sheet-b" id="sheetUpB"></div></div>
@@ -192,8 +189,9 @@
   <button class="save" id="cartViewToSale" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:12px;font-family:inherit">Continue to Sale</button>
 </div></div></div>
 <div class="modal" id="coM"><div class="mbox"><div class="mhd">Sale <button id="coX">×</button></div><div class="mbd">
-  <button type="button" class="pick-open" id="coCustBtn"><span id="coCustLbl">Customer (optional)</span><b>›</b></button>
-  <input type="hidden" id="coName" value=""><input type="hidden" id="coPartyId" value="">
+  <input class="search" id="coName" placeholder="Search or type customer" style="margin-bottom:6px;width:100%" autocomplete="off">
+  <div id="coCustList" style="max-height:140px;overflow-y:auto;margin-bottom:8px"></div>
+  <input type="hidden" id="coPartyId" value="">
   <div id="coItems"></div>
   <div class="co-disc"><div><label>Discount %</label><input id="coDiscPct" type="number" min="0" max="100" step="0.01" placeholder="0"></div><div><label>Discount ₹</label><input id="coDiscAmt" type="number" min="0" step="0.01" placeholder="0"></div></div>
   <div class="co-sub"><span>Subtotal</span><span id="coSub">₹0</span></div>
@@ -244,36 +242,17 @@ function setShift(on){if(on)localStorage.setItem('atom_shift_data',JSON.stringif
 function bumpShift(k,a){const s=shiftData();if(!s||!s.open)return;s[k]=(+s[k]||0)+(+a||0);localStorage.setItem('atom_shift_data',JSON.stringify(s))}
 async function searchProducts(q){const qq=(q||'').toLowerCase().trim();if(!qq)return[];return(await all('products')).filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)).slice(0,8)}
 async function searchParties(q){const qq=(q||'').toLowerCase().trim();let L=await all('parties');if(qq)L=L.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));return L.slice(0,8)}
-let _pickCb=null,_pickKind='product';
-async function fillPickDrawer(q){
-  const box=$('#sheetPickB');if(!box)return;
-  const qq=(q||'').trim();
-  if(_pickKind==='product'){
-    let list=qq?await searchProducts(qq):(await all('products')).slice(0,40);
-    box.innerHTML=list.length?list.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>₹'+(p.price||0)+' · Stk '+(p.stock||0)+(p.cat?' · '+p.cat:'')+'</small></button>').join(''):'<div class="empty">No products</div>';
-  }else{
-    let list=qq?await searchParties(qq):(await all('parties')).slice(0,40);
-    box.innerHTML=list.length?list.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>'+(p.type||'customer')+(p.phone?' · '+p.phone:'')+' · credit ₹'+(p.credit||0)+'</small></button>').join(''):'<div class="empty">No parties</div>';
-  }
-  box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{const id=+btn.dataset.id;closeSheets();if(_pickCb)_pickCb(id,btn)});
-}
-function openPickDrawer(kind,title,cb){
-  _pickKind=kind;_pickCb=cb;
-  $('#sheetPickTitle').textContent=title||(kind==='product'?'Select product':'Select party');
-  $('#sheetPickQ').value='';
-  fillPickDrawer('');
-  openSheet('#sheetPick');
-  setTimeout(()=>{try{$('#sheetPickQ').focus()}catch(e){}},200);
-}
 function bindProdSearch(inp,picks,onPick){
-  const el=$(inp);if(!el)return;
-  el.readOnly=true;el.placeholder=el.placeholder||'Tap to search product';
-  el.onclick=()=>openPickDrawer('product','Select product',async id=>{const p=await getById('products',id);if(!p)return;el.value=p.name;if($(picks))$(picks).innerHTML='';onPick(id,el)});
+  const el=$(inp),box=$(picks);if(!el||!box)return;
+  el.readOnly=false;el.onclick=null;
+  el.oninput=async()=>{const f=await searchProducts(el.value);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>₹'+(p.price||0)+' · '+(p.stock||0)+'</small></button>').join('')||(el.value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');
+    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>onPick(+btn.dataset.id,btn))};
 }
 function bindPartySearch(inp,picks,hid){
-  const el=$(inp);if(!el)return;
-  el.readOnly=true;el.placeholder=el.placeholder||'Tap to search party';
-  el.onclick=()=>openPickDrawer('party','Select party',async id=>{const p=await getById('parties',id);if(!p)return;el.value=p.name;if($(hid))$(hid).value=id;if($(picks))$(picks).innerHTML=''});
+  const el=$(inp),box=$(picks);if(!el||!box)return;
+  el.readOnly=false;el.onclick=null;
+  el.oninput=async()=>{const f=await searchParties(el.value);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>'+(p.phone||'')+' · ₹'+(p.credit||0)+'</small></button>').join('')||(el.value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');
+    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{$(hid).value=btn.dataset.id;el.value=(btn.childNodes[0]&&btn.childNodes[0].textContent)||'';box.innerHTML=''})};
 }
 function renderLines(sel){const box=$(sel);box.innerHTML=_lines.map((l,i)=>'<div class="line-row"><div class="nm">'+l.name+'</div><input type="number" min="1" value="'+l.qty+'" data-i="'+i+'" class="lq"><button type="button" class="x" data-i="'+i+'">×</button></div>').join('')||'<div class="empty" style="padding:8px">No lines yet</div>';box.querySelectorAll('.lq').forEach(inp=>inp.onchange=()=>{_lines[+inp.dataset.i].qty=Math.max(1,+inp.value||1)});box.querySelectorAll('.x').forEach(btn=>btn.onclick=()=>{_lines.splice(+btn.dataset.i,1);renderLines(sel)})}
 
@@ -382,7 +361,7 @@ $('#btnRec').onclick=async()=>{
   openSheet('#sheetUnpaid');
 };
 
-$('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;if($('#sheetPickX'))$('#sheetPickX').onclick=closeSheets;if($('#sheetPickQ'))$('#sheetPickQ').oninput=e=>fillPickDrawer(e.target.value);
+$('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;
 $('#btnEx').onclick=async()=>{const list=(await all('products')).filter(p=>p.expiry).map(p=>({...p,d:daysLeft(p.expiry)})).filter(p=>p.d<=7).sort((a,b)=>a.d-b.d);$('#sheetExB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.d<0?'Expired '+Math.abs(p.d)+'d ago':p.d===0?'Expires today':'Expires in '+p.d+'d'}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No products expiring soon</div>';openSheet('#sheetEx')};
 $('#btnSt').onclick=async()=>{const list=(await all('products')).filter(p=>(p.stock||0)<=0);$('#sheetStB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.cat||''}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No out-of-stock products</div>';openSheet('#sheetSt')};
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}
@@ -515,10 +494,9 @@ async function renderCustPicks(q){
 if($('#coName')){$('#coName').oninput=e=>{renderCustPicks(e.target.value);$('#coPartyId').value=''};$('#coName').onfocus=e=>renderCustPicks(e.target.value)}
 
 
-if($('#coCustBtn'))$('#coCustBtn').onclick=()=>openPickDrawer('party','Select customer',async id=>{const p=await getById('parties',id);if(!p)return;$('#coPartyId').value=id;$('#coName').value=p.name;$('#coCustLbl').textContent=p.name+(p.phone?' · '+p.phone:'')});
 ['coDiscPct','coDiscAmt'].forEach(id=>{const el=$('#'+id);if(el)el.oninput=()=>renderCoItems()});
 
-function openSale(){$('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustLbl'))$('#coCustLbl').textContent='Customer (optional)';if($('#coDiscPct'))$('#coDiscPct').value='';if($('#coDiscAmt'))$('#coDiscAmt').value='';payStatus='paid';$$('#coSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s==='paid'));renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on')}
+function openSale(){$('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustList'))$('#coCustList').innerHTML='';if($('#coDiscPct'))$('#coDiscPct').value='';if($('#coDiscAmt'))$('#coDiscAmt').value='';payStatus='paid';$$('#coSeg button').forEach(b=>b.classList.toggle('on',b.dataset.s==='paid'));renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on')}
 
 $('#btnCheckout').onclick=()=>{if(!cart.length)return;$('#coChoice').classList.add('on')};
 $('#coChoiceX').onclick=()=>$('#coChoice').classList.remove('on');

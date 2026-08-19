@@ -106,7 +106,7 @@ function adminMenu(){
 '<button type="button" data-act="barcodes">Barcodes</button>'+
 '</div>'+
 '<button type="button" class="adm-drop" data-g="sales">Sales'+chev+'</button>'+
-'<div class="adm-sub" id="sub-sales"><button type="button" data-act="sales-today">Today</button><button type="button" data-act="sales-all">All Sales</button><button type="button" data-act="unpaid">Unpaid</button></div>'+
+'<div class="adm-sub" id="sub-sales"><button type="button" data-act="sales-today">Today</button><button type="button" data-act="sales-all">All Sales</button><button type="button" data-act="unpaid">Unpaid</button><button type="button" data-act="sales-returns">Returns</button></div>'+
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
