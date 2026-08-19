@@ -576,10 +576,10 @@ async function handleBarcode(code,keepOpen){
   if(!_scanProds)_scanProds=await all('products');
   const p=_scanProds.find(x=>String(x.barcode||'')===code||String(x.sku||'')===code||String(x.id)===code);
   if(!p){if($('#scanHint'))$('#scanHint').textContent='No product for '+code;toast('No product for '+code);return}
-  selectProduct(p);updateScanCart();
+  addToCart(p);
+  updateScanCart();
   if($('#scanHint'))$('#scanHint').textContent='Added '+p.name+' — scan next';
   if($('#scanManual'))$('#scanManual').value='';
-  if(!keepOpen)return;
 }
 async function startScan(){
   $('#scanM').classList.add('on');updateScanCart();
@@ -611,7 +611,7 @@ if($('#scanManual'))$('#scanManual').onkeydown=e=>{if(e.key==='Enter'){e.prevent
 $('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>startScan();
 async function renderText(q){const box=$('#tsList');const list=await all('products');let f=list.slice();if(catFilter)f=f.filter(p=>(p.cat||'General')===catFilter);const qq=(q||'').trim().toLowerCase();if(qq)f=f.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq));if(!qq&&!catFilter){box.innerHTML='<div class="empty">Start typing or pick a category</div>';return}if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>'<div class="ti" data-id="'+p.id+'"><div class="ico">'+productIcon(p)+'</div><span>'+p.name+((p.stock||0)<=0?' · out of stock':'')+'</span><em>'+fmt(p.price)+'</em></div>').join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
 $('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>startScan();
-function addToCart(p){if(!p)return;const key=p.variantId?('v'+p.variantId):('p'+p.id);const line=cart.find(i=>i._key===key);if(line)line.qty++;else cart.push({_key:key,id:p.id,variantId:p.variantId||null,name:p.name,price:+p.price||0,qty:1});renderCartBar()}
+function addToCart(p){if(!p)return;const key=p.variantId?('v'+p.variantId):('p'+p.id);const line=cart.find(i=>i._key===key);if(line)line.qty++;else cart.push({_key:key,id:p.id,variantId:p.variantId||null,name:p.name,price:+p.price||0,qty:1});renderCartBar();if($('#scanM')&&$('#scanM').classList.contains('on'))updateScanCart()}
 async function selectProduct(p){if(!p)return;const vars=(await all('variants')).filter(v=>+v.productId===+p.id);if(vars.length){openVariantPicker(p,vars);return}addToCart(p)}
 function openVariantPicker(p,vars){$('#varPickTitle').textContent=p.name+' — choose a variant';$('#varPickList').innerHTML=vars.map(v=>`<button type="button" class="var-row" data-vid="${v.id}"><div><div class="vn">${v.name||'Variant'}</div><div class="vm">Stock ${v.stock||0}${v.sku?' · '+v.sku:''}</div></div><div class="vp">${fmt(v.price!=null?v.price:p.price)}</div></button>`).join('');$$('#varPickList .var-row').forEach(b=>b.onclick=()=>{const v=vars.find(x=>+x.id===+b.dataset.vid);if(!v)return;$('#varPickM').classList.remove('on');addToCart({id:p.id,variantId:v.id,name:p.name+' ('+ (v.name||'Var')+')',price:v.price!=null?v.price:p.price})});$('#varPickM').classList.add('on')}
 if($('#varPickX'))$('#varPickX').onclick=()=>$('#varPickM').classList.remove('on');

@@ -182,20 +182,20 @@ async function doDownload(){
 async function doShare(){
   try{
     const {blob,filename}=await _backupBlob();
-    const title='ATOM POS Backup',text='Database backup — '+filename;
-    if(_isNative()){
-      if(await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share backup'})){toast('Share sheet opened');return}
-    }
+    const title='ATOM POS Backup',text='ATOM database backup · '+filename;
+    const file=new File([blob],filename,{type:'application/json'});
+    // Same share path as quotations: open system sheet first
     if(navigator.share){
-      const file=new File([blob],filename,{type:'application/json'});
       try{
-        if(navigator.canShare&&navigator.canShare({files:[file]})){
-          await navigator.share({files:[file],title,text});toast('Share sheet opened');return;
+        if(!navigator.canShare||navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title,text});
+          toast('Share sheet opened');return;
         }
       }catch(e){if(e&&e.name==='AbortError')return}
       try{await navigator.share({title,text});toast('Share sheet opened');return}catch(e){if(e&&e.name==='AbortError')return}
     }
-    _dlBlob(blob,filename);toast('Shared via download');
+    if(_isNative()&&await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share backup'})){toast('Share sheet opened');return}
+    _dlBlob(blob,filename);toast('Backup downloaded');
   }catch(e){toast('Share failed — try Download')}
 }
 
