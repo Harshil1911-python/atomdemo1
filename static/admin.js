@@ -143,16 +143,13 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup / Share — Web Share API files[] (ZIP only, same as barcode) ---------- */
+/* ---------- Backup / Share — Web Share files[] (barcode-style) ---------- */
 function _capPlugin(n){try{return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n]}catch(e){return null}}
 function _blobB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const i=s.indexOf(',');res(i>=0?s.slice(i+1):s)};r.onerror=rej;r.readAsDataURL(blob)})}
 function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a)}catch(e){}URL.revokeObjectURL(url)},800)}
 function _u16(n){return new Uint8Array([n&255,(n>>8)&255])}
 function _u32(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255])}
-function _crc32(buf){
-  let c=~0;for(let i=0;i<buf.length;i++){c^=buf[i];for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1))}
-  return (~c)>>>0;
-}
+function _crc32(buf){let c=~0;for(let i=0;i<buf.length;i++){c^=buf[i];for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1))}return (~c)>>>0}
 function _zipOne(name,str){
   const enc=new TextEncoder(),nameB=enc.encode(name),data=enc.encode(str),crc=_crc32(data);
   const local=new Uint8Array([0x50,0x4b,0x03,0x04,..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(crc),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),...nameB,...data]);
@@ -160,10 +157,9 @@ function _zipOne(name,str){
   const end=new Uint8Array([0x50,0x4b,0x05,0x06,..._u16(0),..._u16(0),..._u16(1),..._u16(1),..._u32(central.length),..._u32(local.length),..._u16(0)]);
   return new Blob([local,central,end],{type:'application/zip'});
 }
-
 let _bakCache=null,_bakAt=0,_bakBusy=null;
 async function _backupZip(force){
-  if(!force&&_bakCache&&Date.now()-_bakAt<60000)return _bakCache;
+  if(!force&&_bakCache&&Date.now()-_bakAt<120000)return _bakCache;
   if(_bakBusy)return _bakBusy;
   _bakBusy=(async()=>{
     let finance=[];try{finance=await all('finance')}catch(e){}
@@ -171,49 +167,90 @@ async function _backupZip(force){
     const json=JSON.stringify(data);
     const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/[\/,\s:]+/g,'-');
     const filename='ATOM-backup-'+d+'.zip';
-    const blob=_zipOne('backup.json',json);
-    _bakCache={blob,filename,json};_bakAt=Date.now();_bakBusy=null;
+    _bakCache={blob:_zipOne('backup.json',json),filename,json};_bakAt=Date.now();_bakBusy=null;
     return _bakCache;
   })();
   return _bakBusy;
 }
 function prewarmBackup(){try{_backupZip(true)}catch(e){}}
-
-async function doDownload(){
-  try{const p=await _backupZip(true);_dlBlob(p.blob,p.filename);toast('Backup ZIP downloaded')}
-  catch(e){toast('Download failed')}
+function _shareBusy(on,msg){
+  let el=document.getElementById('bakShareBusy');
+  if(on){
+    if(!el){el=document.createElement('div');el.id='bakShareBusy';el.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:24px';el.innerHTML='<div style="background:#fff;border-radius:16px;padding:22px 24px;max-width:300px;text-align:center;font-weight:600;font-size:14px;line-height:1.45;box-shadow:0 12px 40px rgba(0,0,0,.2)"></div>';document.body.appendChild(el)}
+    el.style.display='flex';el.firstChild.textContent=msg||'Creating backup ZIP…';
+  }else if(el)el.style.display='none';
 }
-
+async function doDownload(){
+  try{_shareBusy(1,'Preparing ZIP…');const p=await _backupZip(true);_shareBusy(0);_dlBlob(p.blob,p.filename);toast('Backup ZIP downloaded')}
+  catch(e){_shareBusy(0);toast('Download failed')}
+}
 async function doShare(){
-  // Same technique as barcode/QR: navigator.share({ files: [File] })
-  let p;try{p=await _backupZip(false)}catch(e){toast('Could not build backup');return}
-  const file=new File([p.blob],p.filename,{type:'application/zip'});
-  const title='ATOM POS Backup',text='*ATOM POS*\nDatabase backup ZIP\n'+p.filename;
+  // Barcode technique: navigator.share({ files:[File,…] }) — must stay in user-gesture chain (no setTimeout)
+  if(!window.isSecureContext){toast('Open the app via HTTPS (or installed PWA) to share');return}
+  _shareBusy(1,'Creating backup ZIP… 2–3 sec');
+  let p;
+  try{p=await _backupZip(true)}catch(e){_shareBusy(0);toast('Could not create ZIP');return}
+  _shareBusy(1,'Opening share… pick WhatsApp');
+  const title='ATOM POS Backup';
+  const text='*ATOM POS* database backup\n'+p.filename;
+  const zipFile=new File([p.blob],p.filename,{type:'application/zip'});
+  // Build small PNG label (barcode-style second file helps Chrome open the sheet)
+  let files=[zipFile];
   try{
-    if(!navigator.share)throw new Error('no share');
-    // Match barcode path: share files directly (no canShare gate)
-    await navigator.share({files:[file],title,text});
-    toast('Choose WhatsApp');
-    return;
-  }catch(e){
-    if(e&&e.name==='AbortError')return;
+    const c=document.createElement('canvas');c.width=400;c.height=200;const x=c.getContext('2d');
+    x.fillStyle='#0f172a';x.fillRect(0,0,400,200);x.fillStyle='#fff';x.font='bold 22px sans-serif';x.textAlign='center';
+    x.fillText('ATOM POS',200,80);x.font='14px sans-serif';x.fillStyle='#94a3b8';x.fillText('Database ZIP backup',200,120);
+    const png=await new Promise(r=>c.toBlob(r,'image/png'));
+    if(png)files=[new File([png],'ATOM-backup.png',{type:'image/png'}),zipFile];
+  }catch(e){}
+
+  const shareFn=navigator.share&&navigator.share.bind(navigator);
+  if(shareFn){
+    try{
+      // Exact barcode pattern
+      if(!navigator.canShare||navigator.canShare({files})){
+        await shareFn({files,title,text});
+        _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
+        return;
+      }
+    }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
+    // Chrome: ZIP MIME blocked — retry ZIP labeled as octet-stream / text (bytes unchanged)
+    for(const type of ['application/octet-stream','text/plain','']){
+      try{
+        const z=new File([p.blob],p.filename,{type});
+        const f2=files.length>1?[files[0],z]:[z];
+        if(!navigator.canShare||navigator.canShare({files:f2})){
+          await shareFn({files:f2,title,text});
+          _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
+          return;
+        }
+        await shareFn({files:f2,title,text});
+        _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
+        return;
+      }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
+    }
+    // Last Web Share try: PNG only is useless for data; try zip alone without canShare
+    try{
+      await shareFn({files:[new File([p.blob],p.filename,{type:'application/octet-stream'})],title,text});
+      _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
+      return;
+    }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
   }
-  // Capacitor native (optional)
+  // Capacitor native
   try{
     const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
     if(FS&&Share){
       const b64=await _blobB64(p.blob);
-      const path='atom-share/'+p.filename;
-      await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
-      const u=await FS.getUri({path,directory:'CACHE'});
+      await FS.writeFile({path:'atom-share/'+p.filename,data:b64,directory:'CACHE',recursive:true});
+      const u=await FS.getUri({path:'atom-share/'+p.filename,directory:'CACHE'});
       const uri=u&&(u.uri||u);
-      if(uri){await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});toast('Choose WhatsApp');return}
+      if(uri){await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});_shareBusy(0);toast('Pick WhatsApp');return}
     }
   }catch(e){}
-  toast('Share not supported for ZIP on this browser');
+  _shareBusy(0);
+  _dlBlob(p.blob,p.filename);
+  toast('ZIP ready in Downloads — WhatsApp → Attach → Document');
 }
-
-
 
 async function _parseBackupFile(file){
   const buf=await file.arrayBuffer();
@@ -741,7 +778,7 @@ function savePrefs(){
       else if(a==='coupons')showAdminView('#viewCoupons')
       else if(a==='barcodes')showAdminView('#viewBarcodes')
       else if(a==='prefs'){showAdminView('#viewPrefs');loadPrefs()}
-      else if(a==='database'){showAdminView('#viewDatabase');prewarmBackup()}
+      else if(a==='database'){showAdminView('#viewDatabase');prewarmBackup();const b=$('#btnShare');if(b){b.textContent='Share Backup';b.disabled=false}}
       else if(a==='payment-log')showAdminView('#viewPayLog')
       else if(a==='shift')showAdminView('#viewShift')
       else if(a==='sessions')showAdminView('#viewSessions')
@@ -756,10 +793,7 @@ function savePrefs(){
   try{await openDB();await refresh()}catch(e){console.error(e)}
   if($('#btnSavePrefs'))$('#btnSavePrefs').onclick=savePrefs;
   if($('#btnDownload'))$('#btnDownload').onclick=doDownload;
-  if($('#btnShare')){
-    $('#btnShare').onpointerdown=()=>{prewarmBackup()};
-    $('#btnShare').onclick=e=>{e.preventDefault();doShare()};
-  }
+  if($('#btnShare')){const b=$('#btnShare');b.onpointerdown=()=>prewarmBackup();b.onclick=()=>doShare()}
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();
   if($('#restoreFile'))$('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};
   if($('#btnBulkPrintBc'))$('#btnBulkPrintBc').onclick=bulkPrintBarcodes;
