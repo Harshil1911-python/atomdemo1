@@ -110,7 +110,7 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
-'<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
+'<div class="adm-sub" id="sub-settings"><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="shift">Shift info</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
 
 function logSession(panel){

@@ -15,6 +15,7 @@ function showAdminView(id){
     '#viewSuppliers':['Suppliers','Vendor list',renderSuppliers],
     '#viewPricelist':['Price list','Default & party prices',renderPricelist],
     '#viewPayLog':['Payment log','All movements',renderPayLog],
+    '#viewShift':['Shift info','Live shift status',renderShift],
     '#viewCoupons':['Coupons','Discount codes',renderCoupons],
     '#viewBarcodes':['Barcodes','Codes for scan',renderBarcodes],
     '#viewProducts':['All products','Tap to edit',null],
@@ -459,6 +460,21 @@ async function renderPricelist(){
     return '<div class="bulk-row" data-id="'+p.id+'"><div class="bn">'+esc(p.name)+'<div style="font-size:11px;color:var(--m)">Base '+fmt(p.price||0)+'</div></div><input type="number" min="0" step="0.01" class="bulk-price" value="'+price+'"></div>';
   }).join('');
 }
+
+function shiftData(){try{return JSON.parse(localStorage.getItem('atom_shift_data')||'null')}catch(e){return null}}
+async function renderShift(){
+  const s=shiftData(),box=$('#shiftStats');if(!box)return;
+  const open=!!(s&&s.open);
+  const ist=t=>{try{return new Date(t).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true})}catch(e){return '—'}}
+  box.innerHTML=
+    '<div class="stat '+(open?'green':'')+'"><div class="lbl">Status</div><div class="val" style="font-size:16px">'+(open?'Open':'Closed')+'</div></div>'+
+    '<div class="stat purple"><div class="lbl">Sales</div><div class="val" style="font-size:16px">'+fmt((s&&s.sales)||0)+'</div></div>'+
+    '<div class="stat green"><div class="lbl">Cash in</div><div class="val" style="font-size:16px">'+fmt((s&&s.cash)||0)+'</div></div>'+
+    '<div class="stat red"><div class="lbl">Returns</div><div class="val" style="font-size:16px">'+fmt((s&&s.returns)||0)+'</div></div>'+
+    '<div class="stat"><div class="lbl">Opened</div><div class="val" style="font-size:13px">'+(s&&s.openedAt?ist(s.openedAt):'—')+'</div></div>'+
+    '<div class="stat"><div class="lbl">Closed</div><div class="val" style="font-size:13px">'+(s&&s.closedAt?ist(s.closedAt):'—')+'</div></div>';
+}
+
 async function renderPayLog(){
   const rows=[];
   for(const t of await all('transactions')){
@@ -517,6 +533,7 @@ async function renderBarcodes(){
       else if(a==='barcodes')showAdminView('#viewBarcodes')
       else if(a==='database')showAdminView('#viewDatabase')
       else if(a==='payment-log')showAdminView('#viewPayLog')
+      else if(a==='shift')showAdminView('#viewShift')
       else if(a==='sessions')showAdminView('#viewSessions')
       else if(a==='panel')location.href='/billing'
       else if(a==='sales-today'||a==='sales-all'||a==='unpaid')toast('Sales reports — coming soon')
@@ -557,6 +574,8 @@ async function renderBarcodes(){
     }toast('Updated '+n+' prices');renderPricelist();refresh();
   };
 
+  if($('#btnShiftOpen'))$('#btnShiftOpen').onclick=()=>{localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),sales:0,cash:0,returns:0}));localStorage.setItem('atom_shift','1');toast('Shift opened');renderShift()};
+  if($('#btnShiftClose'))$('#btnShiftClose').onclick=()=>{const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));localStorage.setItem('atom_shift','0');toast('Shift closed');renderShift()};
   if($('#btnBulkSave'))$('#btnBulkSave').onclick=async()=>{
     const rows=$$('#invList .bulk-row');
     if(!rows.length)return toast('Nothing to save');
