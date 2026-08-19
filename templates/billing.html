@@ -241,7 +241,7 @@
 </div>
 <script src="/static/common.js"></script>
 <script>
-let plusOpen=false,calcExpr='',calcMem=0,calcGT=0,cart=[],payStatus='paid',payMethod='cash';
+let plusOpen=false,calcExpr='',calcMem=0,calcGT=0,calcReplay=[],cart=[],payStatus='paid',payMethod='cash';
 const daysLeft=exp=>Math.ceil((new Date(exp)-new Date())/86400000);
 const openSheet=id=>{$(id).classList.add('on');$('#sheetOv').classList.add('on')};
 const closeSheets=()=>{$$('.sheet').forEach(s=>s.classList.remove('on'));$('#sheetOv').classList.remove('on')};
@@ -419,7 +419,6 @@ async function checkStockAlerts(){
 
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}
 
-let calcLast='',calcReplay=[];
 const keys=['AC','÷','×','⌫','√','7','8','9','-','x²','4','5','6','+','1/x','1','2','3','=','%','00','0','.','GT','MU','GST+','GST-','M+','M-','MRC','MR','GTCLR'];
 (function buildCalc(){
   const g=$('#calcG');if(!g||g.dataset.built)return;g.dataset.built=1;
@@ -457,7 +456,7 @@ function calcKey(k){
 }
 
 $('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD').textContent='0';if($('#calcSub'))$('#calcSub').textContent=calcReplay.length?'Last: '+calcReplay[calcReplay.length-1]+' · tap GTCLR-hold REPLAY':''};
-$('#calcD').ondblclick=()=>{if(!calcReplay.length)return;const last=calcReplay[calcReplay.length-1];const parts=last.split(' = ');if(parts[0]){calcExpr=parts[0];$('#calcD').textContent=calcExpr;if($('#calcSub'))$('#calcSub').textContent='Replay: '+last}}};
+$('#calcD').ondblclick=()=>{if(!calcReplay.length)return;const last=calcReplay[calcReplay.length-1],parts=last.split(' = ');if(parts[0]){calcExpr=parts[0];$('#calcD').textContent=calcExpr;if($('#calcSub'))$('#calcSub').textContent='Replay: '+last}};
 
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
