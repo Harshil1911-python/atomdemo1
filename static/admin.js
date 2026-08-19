@@ -6,7 +6,7 @@ function showAdminView(id){
   const el=$(id);if(el)el.classList.add('on');
   const map={
     '#viewSessions':['Sessions','Panel visits in IST',renderSessions],
-    '#viewDatabase':['Database','Backup, restore & import',null],
+    '#viewPrefs':['Preferences','Store profile & defaults',null],'#viewDatabase':['Database','Backup, restore & import',null],
     '#viewVariants':['Variants','Size / colour / weight',renderVariants],
     '#viewInventory':['Inventory','Stock levels & bulk edit',renderInventory],
     '#viewPurchase':['Purchases','POs & finance',renderPurchases],
@@ -143,32 +143,60 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup ---------- */
+/* ---------- Backup (Orbit-style share) ---------- */
+function _capPlugin(n){try{return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n]}catch(e){return null}}
+function _isNative(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}}
+function _blobB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const i=s.indexOf(',');res(i>=0?s.slice(i+1):s)};r.onerror=rej;r.readAsDataURL(blob)})}
 async function _backupBlob(){
   const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance:await all('finance').catch(()=>[])};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   return {blob,filename:'ATOM-backup-'+d+'.json'};
 }
+function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{try{URL.revokeObjectURL(url);a.remove()}catch(e){}},1500)}
+async function _nativeShareFile(blob,filename,opts){
+  opts=opts||{};
+  const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
+  if(!FS||!FS.writeFile)return false;
+  const b64=await _blobB64(blob);
+  const tryDirs=['CACHE','DATA','DOCUMENTS','EXTERNAL'];
+  let uri=null;
+  for(const dir of tryDirs){
+    for(const path of ['ATOM/'+filename,filename]){
+      try{
+        await FS.writeFile({path,data:b64,directory:dir,recursive:true});
+        const u=await FS.getUri({path,directory:dir});
+        uri=(u&&(u.uri||u))||null;
+        if(uri)break;
+      }catch(e){}
+    }
+    if(uri)break;
+  }
+  if(!uri||!Share||!Share.share)return false;
+  try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,files:[uri],dialogTitle:opts.dialogTitle||'Share backup'});return true}
+  catch(e){try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,dialogTitle:opts.dialogTitle||'Share backup'});return true}catch(e2){return false}}
+}
 async function doDownload(){
-  const {blob,filename}=await _backupBlob();
-  const url=URL.createObjectURL(blob);
-  const link=document.createElement('a');link.href=url;link.download=filename;link.click();
-  URL.revokeObjectURL(url);
-  toast('Backup downloaded');
+  try{const {blob,filename}=await _backupBlob();_dlBlob(blob,filename);toast('Backup downloaded')}catch(e){toast('Download failed')}
 }
 async function doShare(){
-  const {blob,filename}=await _backupBlob();
-  const file=new File([blob],filename,{type:'application/json'});
   try{
-    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
-      await navigator.share({files:[file],title:'ATOM POS Backup',text:'Database backup'});
-      toast('Share sheet opened');
-    }else if(navigator.share){
-      await navigator.share({title:'ATOM POS Backup',text:'ATOM backup '+filename});
-      toast('Share sheet opened');
-    }else{toast('Share not supported — use Download');doDownload()}
-  }catch(e){if(e&&e.name!=='AbortError')toast('Share failed')}
+    const {blob,filename}=await _backupBlob();
+    const title='ATOM POS Backup',text='Database backup — '+filename;
+    if(_isNative()){
+      if(await _nativeShareFile(blob,filename,{title,text,dialogTitle:'Share backup'})){toast('Share sheet opened');return}
+    }
+    if(navigator.share){
+      const file=new File([blob],filename,{type:'application/json'});
+      try{
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          await navigator.share({files:[file],title,text});toast('Share sheet opened');return;
+        }
+      }catch(e){if(e&&e.name==='AbortError')return}
+      try{await navigator.share({title,text});toast('Share sheet opened');return}catch(e){if(e&&e.name==='AbortError')return}
+    }
+    _dlBlob(blob,filename);toast('Shared via download');
+  }catch(e){toast('Share failed — try Download')}
 }
 
 async function doRestore(file){
@@ -586,6 +614,23 @@ async function renderBarcodes(){
   box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(p.barcode||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div class="pn">'+fmt(p.price)+'</div></div>').join('');
 }
 
+
+function loadPrefs(){
+  try{
+    const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');
+    if($('#prefStore'))$('#prefStore').value=s.store||'';
+    if($('#prefPhone'))$('#prefPhone').value=s.phone||'';
+    if($('#prefAddr'))$('#prefAddr').value=s.addr||'';
+    if($('#prefGst'))$('#prefGst').value=s.gst!=null?s.gst:'';
+    if($('#prefLow'))$('#prefLow').value=s.low!=null?s.low:5;
+  }catch(e){}
+}
+function savePrefs(){
+  const s={store:($('#prefStore')?.value||'').trim(),phone:($('#prefPhone')?.value||'').trim(),addr:($('#prefAddr')?.value||'').trim(),gst:+($('#prefGst')?.value||0),low:+($('#prefLow')?.value||5)};
+  localStorage.setItem('atom_prefs',JSON.stringify(s));
+  toast('Preferences saved');
+}
+
 (async()=>{
   logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
@@ -611,6 +656,7 @@ async function renderBarcodes(){
       else if(a==='pricelist')showAdminView('#viewPricelist')
       else if(a==='coupons')showAdminView('#viewCoupons')
       else if(a==='barcodes')showAdminView('#viewBarcodes')
+      else if(a==='prefs'){showAdminView('#viewPrefs');loadPrefs()}
       else if(a==='database')showAdminView('#viewDatabase')
       else if(a==='payment-log')showAdminView('#viewPayLog')
       else if(a==='shift')showAdminView('#viewShift')
@@ -624,6 +670,7 @@ async function renderBarcodes(){
     };
   });
   try{await openDB();await refresh()}catch(e){console.error(e)}
+  if($('#btnSavePrefs'))$('#btnSavePrefs').onclick=savePrefs;
   if($('#btnDownload'))$('#btnDownload').onclick=doDownload;
   if($('#btnShare'))$('#btnShare').onclick=doShare;
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();

@@ -113,6 +113,25 @@
       <button type="button" class="btn btn-d" id="btnErase" style="display:none" aria-hidden="true"></button>
     </div>
 
+    <!-- Preferences -->
+    <div class="panel-view" id="viewPrefs">
+      <div class="sec-title">Preferences</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Store profile &amp; defaults (saved in this browser).</p>
+      <div class="af" style="max-width:100%">
+        <label>Store name</label>
+        <input id="prefStore" placeholder="Your store name" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:10px">
+        <label>Phone</label>
+        <input id="prefPhone" placeholder="Store phone" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:10px">
+        <label>Address</label>
+        <input id="prefAddr" placeholder="Address" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:10px">
+        <label>Default GST %</label>
+        <input id="prefGst" type="number" min="0" step="0.01" placeholder="0" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:10px">
+        <label>Low stock alert at</label>
+        <input id="prefLow" type="number" min="0" step="1" placeholder="5" style="width:100%;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px">
+        <button type="button" class="btn btn-p" id="btnSavePrefs" style="width:100%">Save preferences</button>
+      </div>
+    </div>
+
     <!-- Database -->
     <div class="panel-view" id="viewDatabase">
       <div class="sec-title">Database</div>
