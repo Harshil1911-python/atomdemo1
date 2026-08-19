@@ -596,7 +596,7 @@ async function renderBarcodes(){
   const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
   if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();_d.classList.add('on');if(_o)_o.classList.add('on')};
   if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
-  if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();askNotify();toast(Notification.permission==='granted'?'Notifications on':'Allow notifications when prompted')};
+  if($('#admNotif'))$('#admNotif').onclick=async()=>{closeDr();const ok=await askNotify();if(ok){notify('ATOM POS','Notifications are working');toast('Test notification sent')}else toast('Allow notifications to enable alerts')};
   $$('.adm-sub button').forEach(b=>{
     b.onclick=()=>{
       const a=b.dataset.act;closeDr();

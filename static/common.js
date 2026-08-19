@@ -59,12 +59,32 @@ function appPrompt(title,msg,def){
   setTimeout(()=>{try{inp.focus();inp.select()}catch(e){}},100);
   return new Promise(r=>{_dlgResolve=v=>{r(v===false?null:inp.value);_dlgResolve=null}});
 }
-function askNotify(){if(!('Notification' in window))return;if(Notification.permission==='default')Notification.requestPermission()}
-function notify(title,body){
+async function askNotify(){
   try{
-    if(!('Notification' in window)||Notification.permission!=='granted')return;
-    new Notification(title,{body:body||'',tag:title.slice(0,40),icon:'/static/icon-192.png'});
+    if(!('Notification' in window)){toast('Notifications not supported');return false}
+    if(Notification.permission==='granted')return true;
+    if(Notification.permission==='denied'){toast('Enable notifications in browser settings');return false}
+    const p=await Notification.requestPermission();
+    if(p==='granted'){toast('Notifications enabled');return true}
+    toast('Notification permission denied');return false;
+  }catch(e){return false}
+}
+async function notify(title,body){
+  const msg=(body||'').slice(0,120);
+  try{
+    if('Notification' in window){
+      if(Notification.permission==='default')await Notification.requestPermission();
+      if(Notification.permission==='granted'){
+        if(navigator.serviceWorker){
+          const reg=await navigator.serviceWorker.getRegistration();
+          if(reg&&reg.showNotification){await reg.showNotification(title,{body:msg,icon:'/static/icon-192.png',badge:'/static/icon-192.png',tag:title.slice(0,32),renotify:true});return}
+        }
+        new Notification(title,{body:msg,icon:'/static/icon-192.png',tag:title.slice(0,32)});
+        return;
+      }
+    }
   }catch(e){}
+  toast(title+(msg?': '+msg:''));
 }
 
 function initShell(){

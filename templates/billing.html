@@ -130,6 +130,8 @@
 .pay-m{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}
 .pay-m button{padding:10px 6px;border:1px solid var(--bd);border-radius:10px;background:#f8fafc;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--m)}
 .pay-m button.on{background:var(--p);color:#fff;border-color:var(--p)}
+.calc-sub{min-height:18px;font-size:11px;color:var(--m);font-weight:600;padding:0 4px 8px;text-align:right;line-height:1.35}
+.calc-g{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 </style>
 </head>
 <body>
@@ -194,7 +196,7 @@
 <div class="sheet" id="sheetCat"><div class="sheet-h"><h3>Category</h3><button type="button" id="sheetCatX">×</button></div><div class="sheet-b" id="sheetCatB"></div></div>
 <div class="sheet" id="sheetSt"><div class="sheet-h"><h3>Out of Stock</h3><button id="sheetStX">×</button></div><div class="sheet-b" id="sheetStB"></div></div>
 <div class="sheet" id="sheetUnpaid"><div class="sheet-h"><h3>Mark Payment Received</h3><button id="sheetUpX">×</button></div><div class="sheet-b" id="sheetUpB"></div></div>
-<div class="modal" id="calcM"><div class="mbox"><div class="mhd">Calculator <button id="calcX">×</button></div><div class="mbd"><div class="calc-d" id="calcD">0</div><div class="calc-g" id="calcG"></div></div></div></div>
+<div class="modal" id="calcM"><div class="mbox"><div class="mhd">Calculator <button id="calcX">×</button></div><div class="mbd"><div class="calc-d" id="calcD">0</div><div class="calc-sub" id="calcSub"></div><div class="calc-g" id="calcG"></div></div></div></div>
 <div class="modal" id="coChoice"><div class="mbox"><div class="mhd">Checkout <button id="coChoiceX">×</button></div><div class="mbd">
   <p style="font-size:13px;color:var(--m);margin-bottom:14px;font-weight:500">Choose what to do next</p>
   <div class="choice-btns">
@@ -417,21 +419,46 @@ async function checkStockAlerts(){
 
 async function renderExStCounts(){const list=await all('products');$('#exCnt').textContent=list.filter(p=>p.expiry&&daysLeft(p.expiry)<=7).length;$('#stCnt').textContent=list.filter(p=>(p.stock||0)<=0).length}
 
-const keys=['AC','÷','×','⌫','GT','7','8','9','-','MU','4','5','6','+','GST+','1','2','3','=','GST-','.','0','00','%','M+'];
-keys.forEach(k=>{const b=document.createElement('button');b.textContent=k;if(['÷','×','-','+','%'].includes(k))b.className='op';if(k==='=')b.className='eq';if(k==='AC')b.className='ac';if(['GT','MU','GST+','GST-','M+'].includes(k))b.className='fn';b.onclick=()=>calcKey(k);$('#calcG').appendChild(b)});
+let calcLast='',calcReplay=[];
+const keys=['AC','÷','×','⌫','√','7','8','9','-','x²','4','5','6','+','1/x','1','2','3','=','%','00','0','.','GT','MU','GST+','GST-','M+','M-','MRC','MR','GTCLR'];
+(function buildCalc(){
+  const g=$('#calcG');if(!g||g.dataset.built)return;g.dataset.built=1;
+  keys.forEach(k=>{const b=document.createElement('button');b.textContent=k;
+    if(['÷','×','-','+','%'].includes(k))b.className='op';
+    else if(k==='=')b.className='eq';else if(k==='AC')b.className='ac';
+    else if(['GT','MU','GST+','GST-','M+','M-','MRC','MR','√','x²','1/x','GTCLR'].includes(k))b.className='fn';
+    b.onclick=()=>calcKey(k);g.appendChild(b)});
+})();
 function calcVal(){try{if(!calcExpr)return 0;return +Function('"use strict";return('+calcExpr.replace(/×/g,'*').replace(/÷/g,'/')+')')()||0}catch{return NaN}}
+function setCalc(v,sub){const n=Math.round((+v)*1e8)/1e8;calcExpr=String(n);$('#calcD').textContent=n;if($('#calcSub'))$('#calcSub').textContent=sub||'';calcLast=String(n)}
 function calcKey(k){
-  const d=$('#calcD');
-  if(k==='AC'){calcExpr='';d.textContent='0';return}
+  const d=$('#calcD'),sub=$('#calcSub');if(sub&&k!=='GST+'&&k!=='GST-')sub.textContent='';
+  if(k==='AC'){calcExpr='';d.textContent='0';if(sub)sub.textContent='';return}
   if(k==='⌫'){calcExpr=calcExpr.slice(0,-1);d.textContent=calcExpr||'0';return}
-  if(k==='='){const r=calcVal();if(isNaN(r)){d.textContent='Err';calcExpr='';return}d.textContent=r;calcExpr=String(r);return}
+  if(k==='='){
+    const expr=calcExpr,r=calcVal();if(isNaN(r)){d.textContent='Err';calcExpr='';return}
+    calcReplay.push(expr+' = '+r);if(calcReplay.length>20)calcReplay.shift();
+    setCalc(r);return;
+  }
   if(k==='GT'){const v=calcVal();if(!isNaN(v)&&calcExpr){calcGT+=v;calcExpr='';d.textContent='GT '+calcGT}else{d.textContent='GT '+calcGT;calcExpr=String(calcGT)}return}
-  if(k==='M+'){const v=calcVal();if(!isNaN(v)){calcMem+=v;d.textContent='M '+calcMem}return}
+  if(k==='GTCLR'){calcGT=0;d.textContent='GT 0';return}
+  if(k==='M+'){const v=calcVal();if(!isNaN(v)){calcMem+=v;d.textContent='M '+calcMem;if(sub)sub.textContent='Memory +'}return}
+  if(k==='M-'){const v=calcVal();if(!isNaN(v)){calcMem-=v;d.textContent='M '+calcMem;if(sub)sub.textContent='Memory −'}return}
+  if(k==='MRC'||k==='MR'){
+    if(k==='MRC'&&d.textContent.startsWith('M ')){calcMem=0;d.textContent='0';calcExpr='';if(sub)sub.textContent='Memory cleared';return}
+    d.textContent=calcMem;calcExpr=String(calcMem);if(sub)sub.textContent='Recall memory';return;
+  }
+  if(k==='√'){const v=calcVal();if(isNaN(v)||v<0){d.textContent='Err';return}setCalc(Math.sqrt(v),'√'+v);return}
+  if(k==='x²'){const v=calcVal();if(isNaN(v))return;setCalc(v*v,v+'²');return}
+  if(k==='1/x'){const v=calcVal();if(isNaN(v)||!v){d.textContent='Err';return}setCalc(1/v,'1/'+v);return}
   if(k==='MU'||k==='GST+'||k==='GST-'){const v=calcVal();if(isNaN(v))return;openGstBox(k,v);return}
-  if(k==='%'){const v=calcVal();if(isNaN(v))return;const r=v/100;d.textContent=r;calcExpr=String(r);return}
+  if(k==='%'){const v=calcVal();if(isNaN(v))return;setCalc(v/100);return}
   calcExpr+=k;d.textContent=calcExpr;
 }
-$('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD').textContent='0'};
+
+$('#btnCalc').onclick=()=>{$('#calcM').classList.add('on');calcExpr='';$('#calcD').textContent='0';if($('#calcSub'))$('#calcSub').textContent=calcReplay.length?'Last: '+calcReplay[calcReplay.length-1]+' · tap GTCLR-hold REPLAY':''};
+$('#calcD').ondblclick=()=>{if(!calcReplay.length)return;const last=calcReplay[calcReplay.length-1];const parts=last.split(' = ');if(parts[0]){calcExpr=parts[0];$('#calcD').textContent=calcExpr;if($('#calcSub'))$('#calcSub').textContent='Replay: '+last}}};
+
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
 
@@ -445,11 +472,11 @@ function openGstBox(mode,v){
   $('#gstM').classList.add('on');
 }
 function applyGstRate(rate){
-  rate=+rate||0;let r=_gstBase;
-  if(_gstMode==='MU'||_gstMode==='GST+')r=_gstBase*(1+rate/100);
-  else if(_gstMode==='GST-')r=_gstBase/(1+rate/100);
-  r=Math.round(r*100)/100;
-  $('#calcD').textContent=r;calcExpr=String(r);
+  rate=+rate||0;let r=_gstBase,sub='';
+  if(_gstMode==='MU'){r=_gstBase*(1+rate/100);sub='Markup '+rate+'% on '+_gstBase+' → +'+(Math.round((r-_gstBase)*100)/100)}
+  else if(_gstMode==='GST+'){const tax=_gstBase*rate/100;r=_gstBase+tax;sub='Base '+_gstBase+' + GST '+rate+'% ('+Math.round(tax*100)/100+') = '+Math.round(r*100)/100}
+  else if(_gstMode==='GST-'){r=_gstBase/(1+rate/100);const tax=_gstBase-r;sub='Incl '+_gstBase+' − GST '+rate+'% ('+Math.round(tax*100)/100+') = base '+Math.round(r*100)/100}
+  r=Math.round(r*1e6)/1e6;setCalc(r,sub);
   $('#gstM').classList.remove('on');
 }
 if($('#gstX'))$('#gstX').onclick=()=>$('#gstM').classList.remove('on');
@@ -567,7 +594,7 @@ $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $$('#coPayM button').forEach(btn=>btn.onclick=()=>{payMethod=btn.dataset.m;$$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m===payMethod))});
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b));const pm=$('#coPayM');if(pm)pm.style.display=payStatus==='paid'?'grid':'none'};
 
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();askNotify();checkStockAlerts();showView('home')};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();await askNotify();checkStockAlerts();showView('home')};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
@@ -581,7 +608,7 @@ document.addEventListener('contextmenu',e=>e.preventDefault());
   initShell();
   await openDB();
   await renderTx();
-  await renderExStCounts();askNotify();checkStockAlerts();
+  await renderExStCounts();await askNotify();checkStockAlerts();
 })();
 </script>
 </body>
