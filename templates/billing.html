@@ -33,10 +33,10 @@
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;margin-top:4px}
 .badge.paid{background:#d1fae5;color:#047857}.badge.unpaid{background:#fee2e2;color:#b91c1c}
 .bar{display:flex;align-items:center;gap:10px;padding:10px 16px;flex-shrink:0;background:var(--bg)}
-.bar.cart-bar{background:#fff;padding:12px 14px;border-radius:16px 16px 0 0;margin:0;border-top:1px solid var(--bd);box-shadow:0 -4px 20px rgba(15,23,42,.06);gap:8px;flex-wrap:wrap}
-.cart-bar .ci{color:var(--t);flex:1;min-width:80px}.cart-bar .ci b{font-size:16px;font-weight:800;color:var(--p);display:block}.cart-bar .ci span{display:block;font-size:12px;color:var(--m);font-weight:500;margin-top:2px}
+.bar.cart-bar{background:#0f172a;padding:12px 14px;border-radius:16px 16px 0 0;margin:0;border-top:none;box-shadow:0 -4px 24px rgba(0,0,0,.35);gap:8px;flex-wrap:wrap}
+.cart-bar .ci{color:#e2e8f0;flex:1;min-width:80px}.cart-bar .ci b{font-size:16px;font-weight:800;color:#fff;display:block}.cart-bar .ci span{display:block;font-size:12px;color:#94a3b8;font-weight:500;margin-top:2px}
 .cart-bar button{border:0;border-radius:10px;padding:10px 12px;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit;flex-shrink:0}
-.cart-bar .hold{background:#f1f5f9;color:var(--t)}.cart-bar .clear{background:#fee2e2;color:var(--r)}.cart-bar .go{background:var(--p);color:#fff}
+.cart-bar .hold{background:#334155;color:#fff}.cart-bar .clear{background:#7f1d1d;color:#fecaca}.cart-bar .go{background:var(--p);color:#fff}
 #fabWrap{justify-content:center}
 .ab{display:flex;align-items:center;justify-content:center;gap:6px;padding:13px 14px;border:0;border-radius:14px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.12);transition:transform .15s,opacity .2s,max-width .25s,padding .25s,flex .25s;overflow:hidden;white-space:nowrap;font-family:inherit}
 .ab:active{transform:scale(.95)}.ab.hid{max-width:0!important;flex:0 0 0!important;opacity:0;padding:0;margin:0;pointer-events:none}
@@ -72,7 +72,6 @@
 .held button{flex:1;border:0;border-radius:9px;padding:8px;font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
 .held .resume{background:var(--p);color:#fff}.held .del{background:#fee2e2;color:var(--r)}
 .sheet-ov{position:absolute;inset:0;background:rgba(15,23,42,.4);z-index:110;opacity:0;visibility:hidden;transition:.25s}.sheet-ov.on{opacity:1;visibility:visible}
-.sheet.pick-drawer{height:70%;max-height:560px}.sheet.pick-drawer .sheet-b{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 12px 20px}
 .sheet{position:absolute;left:0;right:0;bottom:0;height:55%;max-height:420px;background:#fff;border-radius:20px 20px 0 0;z-index:120;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.12)}
 .sheet.on{transform:none}.sheet-h{padding:16px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--bd);flex-shrink:0}
 .sheet-h h3{font-size:16px;font-weight:700}.sheet-h button{border:0;background:#f1f5f9;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;color:var(--m)}
@@ -214,7 +213,15 @@
   <div id="coCustList" class="sugg"></div>
   <input type="hidden" id="coPartyId" value="">
   <div id="coItems"></div>
-  <div class="co-disc"><div class="fd"><label>Discount %</label><input id="coDiscPct" type="number" min="0" max="100" step="0.01" placeholder="0"></div><div class="fd"><label>Discount ₹</label><input id="coDiscAmt" type="number" min="0" step="0.01" placeholder="0"></div></div>
+  <div class="co-disc">
+    <div class="fd" style="display:flex;gap:6px;align-items:center;padding:8px 10px">
+      <button type="button" class="seg-mini on" id="coDiscModePct" style="flex:0 0 auto;padding:8px 12px;border-radius:8px;border:0;font-weight:700;font-size:12px;cursor:pointer;background:var(--p);color:#fff">%</button>
+      <button type="button" class="seg-mini" id="coDiscModeAmt" style="flex:0 0 auto;padding:8px 12px;border-radius:8px;border:0;font-weight:700;font-size:12px;cursor:pointer;background:#e2e8f0;color:var(--t)">₹</button>
+      <input id="coDiscVal" type="number" min="0" step="0.01" placeholder="0" style="flex:1;border:0;background:transparent;font-size:16px;font-weight:700;outline:0">
+    </div>
+    <div class="fd"><label>Coupon</label><input id="coCoupon" placeholder="Code" style="text-transform:uppercase" autocomplete="off"></div>
+  </div>
+  <input type="hidden" id="coDiscPct" value="0"><input type="hidden" id="coDiscAmt" value="0">
   <div class="co-sub"><span>Subtotal</span><span id="coSub">₹0</span></div>
   <div class="co-total"><span>Total</span><span id="coTotal">₹0</span></div>
   <div class="seg" id="coSeg"><button class="on" data-s="paid">Paid now</button><button data-s="unpaid">Unpaid / Credit</button></div>
@@ -253,8 +260,6 @@ function showView(v){
   if(v==='photo')renderPhoto('');if(v==='text')renderText('');if(v==='held')renderHeld();
 }
 $$('.nav').forEach(n=>n.onclick=()=>showView(n.dataset.v));
-
-
 
 let _lines=[];
 function shiftData(){try{return JSON.parse(localStorage.getItem('atom_shift_data')||'null')}catch(e){return null}}
@@ -384,7 +389,6 @@ async function runMore(a){
 
 }
 
-
 $('#btnPlus').onclick=()=>{
   if(plusOpen){plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');openMoreActions()}
   else{plusOpen=true;$('#btnRec').classList.remove('hid');$('#btnBil').classList.remove('hid')}
@@ -461,7 +465,6 @@ $('#calcD').ondblclick=()=>{if(!calcReplay.length)return;const last=calcReplay[c
 $('#calcX').onclick=()=>$('#calcM').classList.remove('on');
 document.addEventListener('keydown',e=>{if(!$('#calcM').classList.contains('on'))return;const k=e.key;if(k>='0'&&k<='9')calcKey(k);else if(k==='.')calcKey('.');else if(k==='+'||k==='-')calcKey(k);else if(k==='*')calcKey('×');else if(k==='/'){e.preventDefault();calcKey('÷')}else if(k==='Enter'||k==='='){e.preventDefault();calcKey('=')}else if(k==='Backspace')calcKey('⌫');else if(k==='Escape')$('#calcM').classList.remove('on');else if(k==='c'||k==='C')calcKey('AC')});
 
-
 let _gstMode=null,_gstBase=0;
 function openGstBox(mode,v){
   _gstMode=mode;_gstBase=v;
@@ -497,7 +500,6 @@ async function openCategorySheet(target){
 if($('#sheetCatX'))$('#sheetCatX').onclick=closeSheets;
 if($('#psCat'))$('#psCat').onclick=()=>openCategorySheet('photo');
 if($('#tsCat'))$('#tsCat').onclick=()=>openCategorySheet('text');
-
 
 async function renderPhoto(q=''){
   const g=$('#psGrid');
@@ -549,39 +551,60 @@ if($('#varPickX'))$('#varPickX').onclick=()=>$('#varPickM').classList.remove('on
 function renderCartBar(){const n=cart.reduce((a,c)=>a+c.qty,0),total=cart.reduce((a,c)=>a+c.qty*c.price,0),bar=$('#cartBar');if(!n){bar.style.display='none';return}bar.style.display='flex';$('#cartTotal').textContent=fmt(total);$('#cartCount').textContent=n+' item'+(n>1?'s':'')}
 
 function cartSub(){return cart.reduce((a,c)=>a+c.qty*c.price,0)}
-function cartDiscount(){const sub=cartSub();let pct=+$('#coDiscPct')?.value||0,amt=+$('#coDiscAmt')?.value||0;if(pct>0)amt=Math.max(amt,sub*pct/100);return Math.min(sub,Math.max(0,amt))}
+let discMode='pct',_couponOff=0;
+function cartDiscount(){const sub=cartSub();let v=+$('#coDiscVal')?.value||0,amt=0;
+  if(discMode==='pct')amt=sub*v/100;else amt=v;
+  amt=Math.max(amt,_couponOff);
+  if($('#coDiscPct'))$('#coDiscPct').value=discMode==='pct'?v:0;
+  if($('#coDiscAmt'))$('#coDiscAmt').value=discMode==='amt'?v:(sub?amt:0);
+  return Math.min(sub,Math.max(0,amt))}
+async function applyCouponCode(){
+  const code=($('#coCoupon')?.value||'').trim().toUpperCase();_couponOff=0;
+  if(!code){renderCoItems();return}
+  const list=await all('coupons');
+  const c=list.find(x=>(x.code||'').toUpperCase()===code&&x.active!==false);
+  if(!c){toast('Invalid coupon');renderCoItems();return}
+  const sub=cartSub();if(c.min&&sub<(+c.min||0)){toast('Min order ₹'+c.min);return}
+  _couponOff=c.type==='flat'?(+c.value||0):sub*(+c.value||0)/100;
+  toast('Coupon '+c.code+' applied');renderCoItems();
+}
 function cartTotal(){return Math.max(0,cartSub()-cartDiscount())}
 function renderCoItems(){$('#coItems').innerHTML=cart.map((c,i)=>`<div class="co-item"><span>${c.name}</span><div class="qtybox"><button data-i="${i}" data-d="-1">−</button>${c.qty}<button data-i="${i}" data-d="1">+</button></div><b>${fmt(c.qty*c.price)}</b></div>`).join('');if($('#coSub'))$('#coSub').textContent=fmt(cartSub());$('#coTotal').textContent=fmt(cartTotal());$$('#coItems button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;cart[i].qty+=+b.dataset.d;if(cart[i].qty<=0)cart.splice(i,1);renderCoItems();renderCartBar();if(!cart.length){$('#coM').classList.remove('on');$('#coCart').classList.remove('on')}})}
 function renderCartView(){$('#cartViewItems').innerHTML=cart.map((c,i)=>`<div class="co-item"><span>${c.name}</span><div class="qtybox"><button data-i="${i}" data-d="-1">−</button>${c.qty}<button data-i="${i}" data-d="1">+</button></div><b>${fmt(c.qty*c.price)}</b></div>`).join('');$('#cartViewTotal').textContent=fmt(cart.reduce((a,c)=>a+c.qty*c.price,0));$$('#cartViewItems button').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;cart[i].qty+=+b.dataset.d;if(cart[i].qty<=0)cart.splice(i,1);renderCartView();renderCartBar();if(!cart.length)$('#coCart').classList.remove('on')})}
 
 async function renderCustPicks(q){
-  const box=$('#coCustList');if(!box)return;
+  const box=$('#coCustList');if(!box)return;box.classList.add('sugg');
   const qq=(q||'').trim().toLowerCase();
-  let list=await all('parties');
-  list=list.filter(p=>(p.type||'customer')!=='supplier');
-  if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));
-  list=list.slice(0,8);
-  if(!list.length){box.innerHTML=qq?'<div class="empty" style="padding:8px">No match — new name will be used</div>':'';return}
-  box.innerHTML=list.map(p=>'<button type="button" class="pick" data-id="'+p.id+'" data-name="'+String(p.name||'').replace(/"/g,'&quot;')+'">'+p.name+(p.phone?'<small>'+p.phone+' · credit ₹'+(p.credit||0)+'</small>':'')+'</button>').join('');
-  $$('#coCustList .pick').forEach(btn=>btn.onclick=()=>{
-    $$('#coCustList .pick').forEach(x=>x.classList.remove('on'));btn.classList.add('on');
-    $('#coName').value=btn.dataset.name;$('#coPartyId').value=btn.dataset.id;box.innerHTML='';
-  });
+  let list=(await all('parties')).filter(p=>{
+    const t=(p.type||'customer').toLowerCase();
+    if(t==='supplier')return false;
+    if(!qq)return true;
+    return (p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq);
+  }).slice(0,12);
+  if(!list.length){box.innerHTML='<div class="empty" style="padding:8px">'+(qq?'No match — new name ok':'No customers yet')+'</div>';box.classList.add('on');return}
+  box.innerHTML=list.map(p=>'<button type="button" class="pick" data-id="'+p.id+'" data-name="'+String(p.name||'').replace(/"/g,'&quot;')+'"><div class="pn">'+(p.name||'')+'<div class="pm">'+(p.phone||'Customer')+'</div></div><div class="pr">₹'+(p.credit||0)+'</div></button>').join('');
+  box.classList.add('on');
+  box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{$('#coName').value=btn.dataset.name;$('#coPartyId').value=btn.dataset.id;box.classList.remove('on');box.innerHTML=''});
 }
 if($('#coName')){$('#coName').oninput=e=>{renderCustPicks(e.target.value);$('#coPartyId').value=''};$('#coName').onfocus=e=>renderCustPicks(e.target.value)}
-
 
 ['coDiscPct','coDiscAmt'].forEach(id=>{const el=$('#'+id);if(el)el.oninput=()=>renderCoItems()});
 
 function openSale(){
   $('#coName').value='';if($('#coPartyId'))$('#coPartyId').value='';if($('#coCustList')){$('#coCustList').innerHTML='';$('#coCustList').classList.remove('on')}
-  if($('#coDiscPct'))$('#coDiscPct').value='';if($('#coDiscAmt'))$('#coDiscAmt').value='';
+  if($('#coDiscVal'))$('#coDiscVal').value='';if($('#coCoupon'))$('#coCoupon').value='';_couponOff=0;discMode='pct';
   payStatus='paid';payMethod='cash';
   $$('#coSeg button').forEach(x=>x.classList.toggle('on',x.dataset.s==='paid'));
   $$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m==='cash'));
   const pm=$('#coPayM');if(pm)pm.style.display='grid';
   renderCoItems();$('#coChoice').classList.remove('on');$('#coCart').classList.remove('on');$('#coM').classList.add('on');
 }
+
+
+if($('#coDiscModePct'))$('#coDiscModePct').onclick=()=>{discMode='pct';$('#coDiscModePct').style.background='var(--p)';$('#coDiscModePct').style.color='#fff';$('#coDiscModeAmt').style.background='#e2e8f0';$('#coDiscModeAmt').style.color='var(--t)';renderCoItems()};
+if($('#coDiscModeAmt'))$('#coDiscModeAmt').onclick=()=>{discMode='amt';$('#coDiscModeAmt').style.background='var(--p)';$('#coDiscModeAmt').style.color='#fff';$('#coDiscModePct').style.background='#e2e8f0';$('#coDiscModePct').style.color='var(--t)';renderCoItems()};
+if($('#coDiscVal'))$('#coDiscVal').oninput=()=>renderCoItems();
+if($('#coCoupon')){$('#coCoupon').onchange=()=>applyCouponCode();$('#coCoupon').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();applyCouponCode()}}}
 
 $('#btnCheckout').onclick=()=>{if(!cart.length)return;$('#coChoice').classList.add('on')};
 $('#coChoiceX').onclick=()=>$('#coChoice').classList.remove('on');
@@ -598,17 +621,19 @@ $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:c
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
 async function renderHeld(){const list=(await all('held')).sort((a,b)=>b.id-a.id),box=$('#heldList');if(!list.length){box.innerHTML='<div class="empty">No held bills</div>';return}box.innerHTML=list.map(h=>`<div class="held" data-id="${h.id}"><div class="hr"><span>${h.items.reduce((a,c)=>a+c.qty,0)} item(s)</span><span>${fmt(h.total)}</span></div><div class="hs">Held ${new Date(h.date).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div><div class="hbtns"><button class="resume">Resume</button><button class="del">Delete</button></div></div>`).join('');$$('.held').forEach(el=>{const id=+el.dataset.id,h=list.find(x=>x.id===id);el.querySelector('.resume').onclick=async()=>{cart=h.items;renderCartBar();await del('held',id);toast('Bill resumed');showView('home')};el.querySelector('.del').onclick=async()=>{await del('held',id);toast('Held bill deleted');renderHeld()}})}
-async function renderTx(){const list=await all('transactions'),box=$('#txList');if(!list.length){box.innerHTML='<div class="empty">No recent transactions yet. Sales you make will show up here.</div>';return}list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));box.innerHTML=list.slice(0,20).map(t=>`<div class="tx" data-id="${t.id}"><div class="txi ${t.icon||'cart'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></div><div class="txb"><div class="txt">${t.title}</div><div class="txs">${t.subtitle||''}</div></div><div class="txr"><div class="txa">${fmt(t.amount)}</div><span class="badge ${t.status}">${t.status==='paid'?'Paid':'Unpaid'}</span></div></div>`).join('');$$('.tx').forEach(el=>el.onclick=async()=>{if(el.querySelector('.badge').classList.contains('unpaid')){const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');renderTx()}})}
-
-document.addEventListener('contextmenu',e=>e.preventDefault());
-(async()=>{
-  logSession('Billing');
-  $('#drawerBody').innerHTML=panelLinks('billing');
-  initShell();
-  await openDB();
-  await renderTx();
-  await renderExStCounts();await askNotify();checkStockAlerts();
-})();
+async function renderTx(){
+  const hidden=new Set(JSON.parse(localStorage.getItem('atom_tx_hide')||'[]'));
+  let list=(await all('transactions')).filter(t=>!hidden.has(String(t.id)));
+  const box=$('#txList');
+  if(!list.length){box.innerHTML='<div class="empty">No recent transactions on home.<br><small style="color:var(--m)">Hidden ones stay in Admin · Sales</small></div>';return}
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  box.innerHTML='<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px"><button type="button" class="btn" id="txSelectAll" style="padding:6px 10px;font-size:11px">Select</button><button type="button" class="btn" id="txHideSel" style="padding:6px 10px;font-size:11px;display:none;background:#fee2e2;color:var(--r)">Hide selected</button></div>'+
+    list.slice(0,30).map(t=>'<div class="tx" data-id="'+t.id+'"><label style="display:none;margin-right:8px" class="tx-chk"><input type="checkbox" data-id="'+t.id+'"></label><div class="txi '+(t.icon||'cart')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg></div><div class="txb"><div class="txt">'+(t.title||'Sale')+'</div><div class="txs">'+(t.subtitle||'')+'</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px"><div class="txa">'+fmt(t.amount)+'</div><button type="button" class="tx-hide" data-id="'+t.id+'" style="border:0;background:#f1f5f9;color:var(--m);font-size:10px;padding:4px 8px;border-radius:6px;cursor:pointer">Hide</button></div></div>').join('');
+  $$('#txList .tx-hide').forEach(btn=>btn.onclick=e=>{e.stopPropagation();const id=String(btn.dataset.id);const h=JSON.parse(localStorage.getItem('atom_tx_hide')||'[]');if(!h.includes(id))h.push(id);localStorage.setItem('atom_tx_hide',JSON.stringify(h));renderTx()});
+  let selMode=false;
+  if($('#txSelectAll'))$('#txSelectAll').onclick=()=>{selMode=!selMode;$$('#txList .tx-chk').forEach(l=>l.style.display=selMode?'':'none');if($('#txHideSel'))$('#txHideSel').style.display=selMode?'':'none';$('#txSelectAll').textContent=selMode?'Cancel':'Select'};
+  if($('#txHideSel'))$('#txHideSel').onclick=()=>{const ids=[...$$('#txList .tx-chk input:checked')].map(i=>String(i.dataset.id));if(!ids.length)return toast('Select rows');const h=JSON.parse(localStorage.getItem('atom_tx_hide')||'[]');ids.forEach(id=>{if(!h.includes(id))h.push(id)});localStorage.setItem('atom_tx_hide',JSON.stringify(h));toast('Hidden from home · still in Admin');renderTx()};
+}
 </script>
 </body>
 </html>

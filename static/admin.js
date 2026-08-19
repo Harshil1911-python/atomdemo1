@@ -80,7 +80,6 @@ async function refresh(){
   if($('#sCard'))$('#sCard').textContent=fmt(cardR);
   if($('#sOther'))$('#sOther').textContent=fmt(otherR);
 
-
   const sold={}; // product name -> qty (approx from cart not stored; use subtitle/title heuristics + amount)
   // Prefer items array if present
   const byProd={}, byCust={};
@@ -146,27 +145,27 @@ function openProductModal(p){
 
 /* ---------- Backup with Web Share ---------- */
 async function doBackup(){
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists')};
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance:await all('finance').catch(()=>[])};
   const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   const filename='ATOM-backup-'+d+'.json';
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
   const file=new File([blob],filename,{type:'application/json'});
   let shared=false;
-  if(navigator.share){
-    try{
-      if(navigator.canShare&&navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:'ATOM POS Backup',text:'ATOM POS database backup'});
-        shared=true;
-      }else{
-        await navigator.share({title:'ATOM POS Backup',text:'Backup file: '+filename+' (also saved to Downloads)'});
-        shared=true;
-      }
-    }catch(e){if(e.name==='AbortError'){URL.revokeObjectURL(url);return}}
+  try{
+    if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:'ATOM POS Backup',text:'Database backup — open with WhatsApp to send'});
+      shared=true;
+    }else if(navigator.share){
+      await navigator.share({title:'ATOM POS Backup',text:'ATOM backup '+filename});
+      shared=true;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  if(!shared){
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement('a');link.href=url;link.download=filename;link.click();
+    URL.revokeObjectURL(url);
   }
-  URL.revokeObjectURL(url);
-  toast(shared?'Shared & downloaded':'Backup downloaded');
+  toast(shared?'Share sheet opened — pick WhatsApp':'Backup downloaded');
 }
 
 async function doRestore(file){
@@ -436,7 +435,6 @@ $$('#invFilter .chip').forEach(c=>c.onclick=()=>{
   renderInventory();
 });
 
-
 function daysLeft(exp){return Math.ceil((new Date(exp)-new Date())/864e5)}
 async function renderReorder(){
   const list=(await all('products')).filter(p=>{const min=+p.minStock||0;return min>0?(+p.stock||0)<=min:(+p.stock||0)<=5});
@@ -498,8 +496,6 @@ async function renderShift(){
     '<div class="stat"><div class="lbl">Opened</div><div class="val" style="font-size:12px">'+(s&&s.openedAt?ist(s.openedAt):'—')+'</div></div>'+
     '<div class="stat"><div class="lbl">Closed</div><div class="val" style="font-size:12px">'+(s&&s.closedAt?ist(s.closedAt):'—')+'</div></div>';
 }
-
-
 
 async function renderProductInfo(){
   const listBox=$('#piList'),det=$('#piDetail');if(!listBox)return;
@@ -586,7 +582,6 @@ async function renderBarcodes(){
   if(!list.length){box.innerHTML='<div class="empty">No barcodes set. Edit a product to add one.</div>';return}
   box.innerHTML=list.map(p=>'<div class="sess-item"><div><div class="pn">'+esc(p.name)+'</div><div class="tm" style="font-family:ui-monospace,monospace">'+esc(p.barcode||'—')+(p.sku?' · SKU '+esc(p.sku):'')+'</div></div><div class="pn">'+fmt(p.price)+'</div></div>').join('');
 }
-
 
 (async()=>{
   logSession('Admin');
