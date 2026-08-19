@@ -456,33 +456,34 @@ async function renderBarcodes(){
   logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
   initShell();
+  const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
   const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
   if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();_d.classList.add('on');if(_o)_o.classList.add('on')};
-  await openDB();
-  await refresh();
-  const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
   if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
   if($('#admNotif'))$('#admNotif').onclick=()=>{closeDr();toast('No new notifications')};
-  $$('.adm-sub button').forEach(b=>b.onclick=async()=>{
-    const a=b.dataset.act;closeDr();
-    if(a==='add-product'){openProductModal(null);showAdminView('#viewMain')}
-    else if(a==='all-products'){showAdminView('#viewProducts');refresh()}
-    else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='low')});renderInventory()}
-    else if(a==='variants'){showAdminView('#viewVariants')}
-    else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>{c.classList.toggle('on',c.dataset.f==='all')});renderInventory()}
-    else if(a==='purchase'){showAdminView('#viewPurchase')}
-    else if(a==='suppliers'){showAdminView('#viewSuppliers')}
-    else if(a==='reorder'){showAdminView('#viewReorder')}
-    else if(a==='expiring'){showAdminView('#viewExpiring')}
-    else if(a==='pricelist'){showAdminView('#viewPricelist')}
-    else if(a==='coupons'){showAdminView('#viewCoupons')}
-    else if(a==='barcodes'){showAdminView('#viewBarcodes')}
-    else if(a==='database'){showAdminView('#viewDatabase')}
-    else if(a==='sessions'){showAdminView('#viewSessions')}
-    else if(a==='panel'){location.href='/billing'}
-    else if(a==='sales-today'||a==='sales-all'||a==='unpaid'){toast('Sales reports — coming soon')}
-    else if(a==='customers'){toast('Customers — coming soon')}
+  $$('.adm-sub button').forEach(b=>{
+    b.onclick=()=>{
+      const a=b.dataset.act;closeDr();
+      if(a==='add-product'){openProductModal(null);showAdminView('#viewProducts')}
+      else if(a==='all-products'){showAdminView('#viewProducts');refresh()}
+      else if(a==='low-stock'){showAdminView('#viewInventory');invFilter='low';$$('#invFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='low'));renderInventory()}
+      else if(a==='variants')showAdminView('#viewVariants')
+      else if(a==='inventory'){showAdminView('#viewInventory');invFilter='all';$$('#invFilter .chip').forEach(c=>c.classList.toggle('on',c.dataset.f==='all'));renderInventory()}
+      else if(a==='purchase')showAdminView('#viewPurchase')
+      else if(a==='suppliers')showAdminView('#viewSuppliers')
+      else if(a==='reorder')showAdminView('#viewReorder')
+      else if(a==='expiring')showAdminView('#viewExpiring')
+      else if(a==='pricelist')showAdminView('#viewPricelist')
+      else if(a==='coupons')showAdminView('#viewCoupons')
+      else if(a==='barcodes')showAdminView('#viewBarcodes')
+      else if(a==='database')showAdminView('#viewDatabase')
+      else if(a==='sessions')showAdminView('#viewSessions')
+      else if(a==='panel')location.href='/billing'
+      else if(a==='sales-today'||a==='sales-all'||a==='unpaid')toast('Sales reports — coming soon')
+      else if(a==='customers')toast('Customers — coming soon')
+    };
   });
+  try{await openDB();await refresh()}catch(e){console.error(e)}
   if($('#btnBackup'))$('#btnBackup').onclick=doBackup;
   if($('#btnRestore'))$('#btnRestore').onclick=()=>$('#restoreFile').click();
   if($('#restoreFile'))$('#restoreFile').onchange=e=>{const f=e.target.files[0];if(f)doRestore(f);e.target.value=''};

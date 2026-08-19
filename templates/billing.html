@@ -81,9 +81,14 @@
 .sheet-item .si img{width:100%;height:100%;object-fit:cover}
 .sheet-item .sn{font-size:14px;font-weight:600;flex:1}.sheet-item .sn small{display:block;font-weight:500;color:var(--m);font-size:12px;margin-top:2px}
 .sheet-item .sp{font-size:13px;font-weight:700;color:var(--m)}
-.act-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:12px;background:#f8fafc;margin-bottom:8px;border:0;width:100%;text-align:left;font-family:inherit;font-size:14px;font-weight:700;color:var(--t);cursor:pointer}
-.act-row:active{background:#eef2ff;color:var(--p)}
-.act-row .sub{display:block;font-size:11px;font-weight:500;color:var(--m);margin-top:2px}
+.act-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:4px 0 12px}
+.act-ico{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:0;border-radius:14px;background:#f8fafc;cursor:pointer;font-family:inherit;min-height:84px}
+.act-ico:active{background:#eef2ff;transform:scale(.96)}
+.act-ico .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:var(--p)}
+.act-ico .ic svg{width:20px;height:20px}
+.act-ico span{font-size:10px;font-weight:700;color:var(--t);text-align:center;line-height:1.25;max-width:100%}
+.act-shift{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:12px;background:#f8fafc;margin-bottom:4px}
+.act-shift b{font-size:13px;font-weight:700}.act-shift small{display:block;font-size:11px;color:var(--m);font-weight:500}
 .sw{width:44px;height:26px;border-radius:20px;background:#cbd5e1;position:relative;flex-shrink:0;border:0;padding:0}
 .sw.on{background:var(--g)}.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}.sw.on i{left:21px}
 .calc-d{background:#f1f5f9;border-radius:12px;padding:14px;text-align:right;font-size:30px;font-weight:600;min-height:52px;margin-bottom:12px;word-break:break-all;font-variant-numeric:tabular-nums}
@@ -227,19 +232,23 @@ function shiftOn(){return localStorage.getItem('atom_shift')==='1'}
 function setShift(on){localStorage.setItem('atom_shift',on?'1':'0')}
 function openMoreActions(){
   const on=shiftOn();
+  const cell=(a,label,ic)=>'<button type="button" class="act-ico" data-a="'+a+'"><div class="ic">'+ic+'</div><span>'+label+'</span></button>';
   $('#sheetMoreB').innerHTML=
-    '<button type="button" class="act-row" data-a="purret">Purchase return<span class="sub">Return stock to supplier</span></button>'+
-    '<button type="button" class="act-row" data-a="saleret">Sales return<span class="sub">Customer return · restock</span></button>'+
-    '<button type="button" class="act-row" data-a="quote">Quotations<span class="sub">Create & share quote</span></button>'+
-    '<button type="button" class="act-row" data-a="shift" style="cursor:default">Shift <span class="sub">'+(on?'On duty':'Off duty')+'</span></button><div style="display:flex;justify-content:flex-end;margin:-4px 0 10px"><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
-    '<button type="button" class="act-row" data-a="party">Create party<span class="sub">Customer or supplier</span></button>'+
-    '<button type="button" class="act-row" data-a="counter">Counter<span class="sub">Open Photo POS</span></button>'+
-    '<button type="button" class="act-row" data-a="pay">Make payment<span class="sub">Any outgoing payment</span></button>'+
-    '<button type="button" class="act-row" data-a="recv">Receive payment<span class="sub">Any incoming payment</span></button>';
-  $$('#sheetMoreB .act-row').forEach(b=>b.onclick=()=>{const a=b.dataset.a;if(a==='shift')return;closeSheets();runMore(a)});
+    '<div class="act-shift"><div><b>Shift</b><small>'+(on?'On duty':'Off duty')+'</small></div><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
+    '<div class="act-grid">'+
+    cell('purret','Purchase return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`)+
+    cell('saleret','Sales return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`)+
+    cell('quote','Quotations',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`)+
+    cell('party','Create party',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`)+
+    cell('counter','Counter',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>`)+
+    cell('pay','Make payment',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`)+
+    cell('recv','Receive payment',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`)+
+    '</div>';
+  $$('#sheetMoreB .act-ico').forEach(btn=>btn.onclick=()=>{closeSheets();runMore(btn.dataset.a)});
   const sw=$('#shiftSw');if(sw)sw.onclick=e=>{e.stopPropagation();const n=!shiftOn();setShift(n);sw.classList.toggle('on',n);openMoreActions()};
   openSheet('#sheetMore');
 }
+
 function openAct(title,html){$('#actTitle').textContent=title;$('#actBody').innerHTML=html;$('#actM').classList.add('on')}
 if($('#actX'))$('#actX').onclick=()=>$('#actM').classList.remove('on');
 
