@@ -87,16 +87,24 @@ async function notify(title,body){
   toast(title+(msg?': '+msg:''));
 }
 
+function closeShell(){
+  const ov=$('#ov'),dr=$('#dr');
+  if(dr)dr.classList.remove('on');
+  if(ov)ov.classList.remove('on');
+  $$('.panel-opts,.adm-sub').forEach(e=>e.classList.remove('show'));
+  $$('.panel-toggle,.adm-drop').forEach(e=>e.classList.remove('open'));
+}
 function initShell(){
   const menu=$('#btnMenu'),ov=$('#ov'),dr=$('#dr');
+  closeShell();
   if(menu&&dr){
-    menu.onclick=e=>{e.preventDefault();e.stopPropagation();dr.classList.add('on');if(ov)ov.classList.add('on')};
+    menu.onclick=e=>{
+      e.preventDefault();e.stopPropagation();
+      if(dr.classList.contains('on'))closeShell();
+      else{dr.classList.add('on');if(ov)ov.classList.add('on')}
+    };
   }
-  if(ov)ov.onclick=()=>{
-    if(dr)dr.classList.remove('on');ov.classList.remove('on');
-    $$('.panel-opts,.adm-sub').forEach(e=>e.classList.remove('show'));
-    $$('.panel-toggle,.adm-drop').forEach(e=>e.classList.remove('open'));
-  };
+  if(ov)ov.onclick=()=>closeShell();
   const tog=$('#btnChangePanel'),opts=$('#panelOpts');
   if(tog)tog.onclick=()=>{opts.classList.toggle('show');tog.classList.toggle('open')};
   $$('.adm-drop').forEach(btn=>{
@@ -113,6 +121,7 @@ function initShell(){
   const ib=$('#btnInstallPwa');
   if(ib)ib.onclick=async()=>{if(!deferred){toast('Use browser menu: Install app');return}$('#installBanner').classList.remove('show');deferred.prompt();await deferred.userChoice;deferred=null};
   if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)closeShell()});
 }
 
 function panelLinks(active){

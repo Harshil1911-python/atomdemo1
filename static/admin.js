@@ -590,9 +590,9 @@ async function renderBarcodes(){
   logSession('Admin');
   $('#drawerBody').innerHTML=adminMenu();
   initShell();
-  const closeDr=()=>{$('#dr').classList.remove('on');$('#ov').classList.remove('on')};
+  const closeDr=()=>closeShell();
   const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
-  if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();_d.classList.add('on');if(_o)_o.classList.add('on')};
+  if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();if(_d.classList.contains('on'))closeShell();else{_d.classList.add('on');if(_o)_o.classList.add('on')}};
   if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
   if($('#admNotif'))$('#admNotif').onclick=async()=>{closeDr();const ok=await askNotify();if(ok){notify('ATOM POS','Notifications are working');toast('Test notification sent')}else toast('Allow notifications to enable alerts')};
   $$('.adm-sub button').forEach(b=>{
