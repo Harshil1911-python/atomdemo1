@@ -190,7 +190,7 @@
 </div></div></div>
 <div class="modal" id="coM"><div class="mbox"><div class="mhd">Sale <button id="coX">×</button></div><div class="mbd">
   <input class="search" id="coName" placeholder="Search or type customer" style="margin-bottom:6px;width:100%" autocomplete="off">
-  <div id="coCustList" style="max-height:140px;overflow-y:auto;margin-bottom:8px"></div>
+  <div id="coCustList" class="sugg"></div>
   <input type="hidden" id="coPartyId" value="">
   <div id="coItems"></div>
   <div class="co-disc"><div><label>Discount %</label><input id="coDiscPct" type="number" min="0" max="100" step="0.01" placeholder="0"></div><div><label>Discount ₹</label><input id="coDiscAmt" type="number" min="0" step="0.01" placeholder="0"></div></div>
@@ -244,15 +244,23 @@ async function searchProducts(q){const qq=(q||'').toLowerCase().trim();if(!qq)re
 async function searchParties(q){const qq=(q||'').toLowerCase().trim();let L=await all('parties');if(qq)L=L.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.phone||'').includes(qq));return L.slice(0,8)}
 function bindProdSearch(inp,picks,onPick){
   const el=$(inp),box=$(picks);if(!el||!box)return;
-  el.readOnly=false;el.onclick=null;
-  el.oninput=async()=>{const f=await searchProducts(el.value);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>₹'+(p.price||0)+' · '+(p.stock||0)+'</small></button>').join('')||(el.value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');
-    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>onPick(+btn.dataset.id,btn))};
+  box.classList.add('sugg');el.oninput=async()=>{
+    const q=el.value.trim();if(!q){box.classList.remove('on');box.innerHTML='';return}
+    const f=await searchProducts(q);
+    box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>₹'+(p.price||0)+' · '+(p.stock||0)+'</small></button>').join('')||'<div class="empty" style="padding:8px">No match</div>';
+    box.classList.add('on');
+    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{onPick(+btn.dataset.id,btn);box.classList.remove('on');box.innerHTML=''});
+  };
 }
 function bindPartySearch(inp,picks,hid){
   const el=$(inp),box=$(picks);if(!el||!box)return;
-  el.readOnly=false;el.onclick=null;
-  el.oninput=async()=>{const f=await searchParties(el.value);box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>'+(p.phone||'')+' · ₹'+(p.credit||0)+'</small></button>').join('')||(el.value.trim()?'<div class="empty" style="padding:6px">No match</div>':'');
-    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{$(hid).value=btn.dataset.id;el.value=(btn.childNodes[0]&&btn.childNodes[0].textContent)||'';box.innerHTML=''})};
+  box.classList.add('sugg');el.oninput=async()=>{
+    const q=el.value.trim();if(!q){box.classList.remove('on');box.innerHTML='';return}
+    const f=await searchParties(q);
+    box.innerHTML=f.map(p=>'<button type="button" class="pick" data-id="'+p.id+'">'+p.name+'<small>'+(p.phone||'')+' · ₹'+(p.credit||0)+'</small></button>').join('')||'<div class="empty" style="padding:8px">No match</div>';
+    box.classList.add('on');
+    box.querySelectorAll('.pick').forEach(btn=>btn.onclick=()=>{$(hid).value=btn.dataset.id;el.value=(btn.childNodes[0]&&btn.childNodes[0].textContent)||'';box.classList.remove('on');box.innerHTML=''});
+  };
 }
 function renderLines(sel){const box=$(sel);box.innerHTML=_lines.map((l,i)=>'<div class="line-row"><div class="nm">'+l.name+'</div><input type="number" min="1" value="'+l.qty+'" data-i="'+i+'" class="lq"><button type="button" class="x" data-i="'+i+'">×</button></div>').join('')||'<div class="empty" style="padding:8px">No lines yet</div>';box.querySelectorAll('.lq').forEach(inp=>inp.onchange=()=>{_lines[+inp.dataset.i].qty=Math.max(1,+inp.value||1)});box.querySelectorAll('.x').forEach(btn=>btn.onclick=()=>{_lines.splice(+btn.dataset.i,1);renderLines(sel)})}
 
