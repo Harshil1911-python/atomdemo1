@@ -143,74 +143,83 @@ function openProductModal(p){
   $('#admM').classList.add('on');
 }
 
-/* ---------- Backup / Share (system sheet + ZIP) ---------- */
+/* ---------- Backup / Share (same path as barcode WA share) ---------- */
 function _capPlugin(n){try{return window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins[n]}catch(e){return null}}
 function _isNative(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())}catch(e){return false}}
 function _blobB64(blob){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const s=String(r.result||'');const i=s.indexOf(',');res(i>=0?s.slice(i+1):s)};r.onerror=rej;r.readAsDataURL(blob)})}
-function _u16(n){return new Uint8Array([n&255,(n>>8)&255])}
-function _u32(n){return new Uint8Array([n&255,(n>>8)&255,(n>>16)&255,(n>>24)&255])}
-function _zipStore(name,str){ // uncompressed single-file ZIP
-  const enc=new TextEncoder(),nameB=enc.encode(name),data=enc.encode(str),crc=0; // CRC optional for simple readers
-  const local=new Uint8Array([...[0x50,0x4b,0x03,0x04],..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),...nameB,...data]);
-  const central=new Uint8Array([...[0x50,0x4b,0x01,0x02],..._u16(20),..._u16(20),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(data.length),..._u32(data.length),..._u16(nameB.length),..._u16(0),..._u16(0),..._u16(0),..._u16(0),..._u32(0),..._u32(0),...nameB]);
-  const end=new Uint8Array([...[0x50,0x4b,0x05,0x06],..._u16(0),..._u16(0),..._u16(1),..._u16(1),..._u32(central.length),..._u32(local.length),..._u16(0)]);
-  return new Blob([local,central,end],{type:'application/zip'});
-}
-async function _backupBlob(){
-  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance:await all('finance').catch(()=>[])};
+function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{try{document.body.removeChild(a)}catch(e){};URL.revokeObjectURL(url)},800)}
+async function _backupPayload(){
+  let finance=[];try{finance=await all('finance')}catch(e){}
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases'),suppliers:await all('suppliers'),coupons:await all('coupons'),parties:await all('parties'),quotations:await all('quotations'),pricelists:await all('pricelists'),finance};
   const json=JSON.stringify(data);
-  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/[\/,\s:]+/g,'-');
-  const filename='ATOM-backup-'+d+'.zip';
-  return {blob:_zipStore('backup.json',json),filename,json};
+  const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(/[\/,\s:]+/g,'-');
+  const base='ATOM-backup-'+d;
+  return {json,base,blobJson:new Blob([json],{type:'application/json'}),blobZip:new Blob([json],{type:'application/octet-stream'})};
 }
-function _dlBlob(blob,filename){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{try{URL.revokeObjectURL(url);a.remove()}catch(e){}},1500)}
-async function _nativeShareFile(blob,filename,opts){
-  opts=opts||{};const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');if(!FS||!FS.writeFile)return false;
-  const b64=await _blobB64(blob);let uri=null;
-  for(const dir of ['CACHE','DATA','DOCUMENTS','EXTERNAL']){for(const path of ['ATOM/'+filename,filename]){try{await FS.writeFile({path,data:b64,directory:dir,recursive:true});const u=await FS.getUri({path,directory:dir});uri=(u&&(u.uri||u))||null;if(uri)break}catch(e){}}if(uri)break}
-  if(!uri||!Share||!Share.share)return false;
-  try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,files:[uri],dialogTitle:opts.dialogTitle||'Share backup'});return true}
-  catch(e){try{await Share.share({title:opts.title||filename,text:opts.text||'ATOM POS Backup',url:uri,dialogTitle:opts.dialogTitle||'Share backup'});return true}catch(e2){return false}}
+async function _shareFiles(files,title,text){
+  if(!navigator.share)return false;
+  try{
+    const payload={files,title,text};
+    if(navigator.canShare&&!navigator.canShare(payload))return false;
+    await navigator.share(payload);
+    return true;
+  }catch(e){
+    if(e&&e.name==='AbortError')return 'abort';
+    return false;
+  }
 }
-async function doDownload(){try{const {blob,filename}=await _backupBlob();_dlBlob(blob,filename);toast('Backup downloaded')}catch(e){toast('Download failed')}}
+async function _shareNativeFile(blob,filename,title,text){
+  try{
+    const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
+    if(!FS||!Share)return false;
+    const b64=await _blobB64(blob);
+    const path='atom-share/'+filename;
+    await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
+    let uri=null;
+    try{const u=await FS.getUri({path,directory:'CACHE'});uri=u&&(u.uri||u)}catch(e){}
+    if(!uri)return false;
+    try{await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});return true}
+    catch(e){try{await Share.share({title,text,url:uri,dialogTitle:'Share backup'});return true}catch(e2){return false}}
+  }catch(e){return false}
+}
+async function doDownload(){
+  try{
+    const {blobJson,base}=await _backupPayload();
+    _dlBlob(blobJson,base+'.json');
+    toast('Backup downloaded');
+  }catch(e){toast('Download failed')}
+}
 async function doShare(){
-  toast('Preparing backup…');
-  const {blob,filename}=await _backupBlob();
-  const file=new File([blob],filename,{type:'application/zip'});
-  const title='ATOM POS Backup',text='ATOM POS database · '+filename;
+  // Same approach as barcode/QR: build File[] → navigator.share({files})
+  let payload;
+  try{payload=await _backupPayload()}catch(e){toast('Could not build backup');return}
+  const {json,base,blobJson}=payload;
+  const title='ATOM POS Backup';
+  const text='ATOM POS database backup · restore in Admin → Database';
+  // 1) JSON file (WhatsApp / Android accept this like images)
+  const fJson=new File([blobJson],base+'.json',{type:'application/json'});
+  let r=await _shareFiles([fJson],title,text);
+  if(r===true){toast('Pick WhatsApp — file attached');return}
+  if(r==='abort')return;
+  // 2) octet-stream alias (some WebViews)
+  const fBin=new File([blobJson],base+'.json',{type:'application/octet-stream'});
+  r=await _shareFiles([fBin],title,text);
+  if(r===true){toast('Pick WhatsApp — file attached');return}
+  if(r==='abort')return;
+  // 3) Capacitor native share with file URI
+  if(await _shareNativeFile(blobJson,base+'.json',title,text)){toast('Pick WhatsApp — file attached');return}
+  // 4) Download then share text link instruction (last resort)
+  _dlBlob(blobJson,base+'.json');
   try{
     if(navigator.share){
-      const payload={files:[file],title,text};
-      if(!navigator.canShare||navigator.canShare(payload)){
-        await navigator.share(payload);
-        toast('Pick WhatsApp — ZIP attached');
-        return;
-      }
+      await navigator.share({title,text:text+'\n\nFile saved as '+base+'.json — attach it from Downloads in WhatsApp'});
+      return;
     }
   }catch(e){if(e&&e.name==='AbortError')return}
-  try{
-    if(_isNative()){
-      const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
-      if(FS&&Share){
-        const b64=await _blobB64(blob);
-        const path=filename;
-        await FS.writeFile({path,data:b64,directory:'CACHE',recursive:true});
-        const uriRes=await FS.getUri({path,directory:'CACHE'});
-        const uri=uriRes&&(uriRes.uri||uriRes);
-        if(uri){await Share.share({title,text,url:uri,files:[uri],dialogTitle:'Share backup'});toast('Pick WhatsApp — ZIP attached');return}
-      }
-    }
-  }catch(e){}
-  _dlBlob(blob,filename);toast('ZIP saved — share from Downloads via WhatsApp');
+  toast('File saved to Downloads — attach in WhatsApp');
 }
-async function _parseBackupFile(file){
-  const buf=await file.arrayBuffer(),u=new Uint8Array(buf);
-  if(u[0]===0x50&&u[1]===0x4b){ // ZIP: find first local file data after name
-    const nameLen=u[26]|(u[27]<<8),extra=u[28]|(u[29]<<8),start=30+nameLen+extra,size=(u[22]|(u[23]<<8)|(u[24]<<16)|(u[25]<<24));
-    return JSON.parse(new TextDecoder().decode(u.slice(start,start+size)));
-  }
-  return JSON.parse(await file.text());
-}
+
+
 async function doRestore(file){
   try{
     const data=await _parseBackupFile(file);
