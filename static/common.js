@@ -18,9 +18,9 @@ const clearStore=s=>new Promise((res,rej)=>{const t=db.transaction(s,'readwrite'
 const getById=(s,id)=>new Promise((res,rej)=>{const t=db.transaction(s,'readonly').objectStore(s).get(id);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error)});
 
 function productIcon(p){
-  if(p&&p.photo)return `<img src="${p.photo}" alt="">`;
+  if(p&&p.photo)return '<img src="'+p.photo+'" alt="" loading="lazy">';
   const c=(p&&p.color)||COLORS[0];
-  return `<div class="ico" style="background:${c}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>`;
+  return '<div class="ico" style="background:'+c+'"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>';
 }
 
 function ensureDlg(){

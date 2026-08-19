@@ -71,32 +71,27 @@ function openProductModal(p){
 
 /* ---------- Backup with Web Share ---------- */
 async function doBackup(){
-  const data={
-    version:2,
-    created:new Date().toISOString(),
-    products:await all('products'),
-    transactions:await all('transactions'),
-    held:await all('held'),
-    variants:await all('variants'),
-    purchases:await all('purchases')
-  };
-  const json=JSON.stringify(data);
-  const blob=new Blob([json],{type:'application/json'});
+  const data={version:2,created:new Date().toISOString(),products:await all('products'),transactions:await all('transactions'),held:await all('held'),variants:await all('variants'),purchases:await all('purchases')};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
   const d=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).replace(/[\/,\s]+/g,'-');
   const filename='ATOM-backup-'+d+'.json';
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
   const file=new File([blob],filename,{type:'application/json'});
-
-  if(navigator.canShare&&navigator.canShare({files:[file]})){
+  let shared=false;
+  if(navigator.share){
     try{
-      await navigator.share({files:[file],title:'ATOM POS Backup',text:'ATOM POS database backup'});
-      toast('Shared successfully');
-      return;
-    }catch(e){if(e.name==='AbortError')return}
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'ATOM POS Backup',text:'ATOM POS database backup'});
+        shared=true;
+      }else{
+        await navigator.share({title:'ATOM POS Backup',text:'Backup file: '+filename+' (also saved to Downloads)'});
+        shared=true;
+      }
+    }catch(e){if(e.name==='AbortError'){URL.revokeObjectURL(url);return}}
   }
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download=filename;a.click();
-  URL.revokeObjectURL(a.href);
-  toast('Backup downloaded');
+  URL.revokeObjectURL(url);
+  toast(shared?'Shared & downloaded':'Backup downloaded');
 }
 
 async function doRestore(file){
@@ -271,7 +266,7 @@ async function renderPurchases(){
 /* ---------- Init ---------- */
 $('#btnAdd').onclick=()=>openProductModal(null);
 $('#admX').onclick=()=>{$('#admM').classList.remove('on');editId=null;photoData=null};
-$('#pPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{photoData=ev.target.result;$('#pPrev').innerHTML='<img src="'+photoData+'" alt="">'};r.readAsDataURL(f)};
+$('#pPhoto').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const max=480,s=Math.min(1,max/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);photoData=c.toDataURL('image/jpeg',0.72);$('#pPrev').innerHTML='<img src="'+photoData+'" alt="">'};img.src=ev.target.result};r.readAsDataURL(f)};
 
 $('#pSave').onclick=async()=>{
   const n=$('#pName').value.trim(),pr=+$('#pPrice').value;

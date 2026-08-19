@@ -1,13 +1,13 @@
 {
   "name": "ATOM POS",
   "short_name": "ATOM",
-  "description": "ATOM Point of Sale by TechSerenia",
+  "description": "ATOM Point of Sale — fast billing, stock and sales offline",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0f172a",
-  "theme_color": "#4f46e5",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/static/icon-192.png",
