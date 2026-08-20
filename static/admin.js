@@ -185,58 +185,50 @@ async function doDownload(){
   catch(e){_shareBusy(0);toast('Download failed')}
 }
 async function doShare(){
-  // Barcode technique: navigator.share({ files:[File,…] }) — must stay in user-gesture chain (no setTimeout)
+  // Web Share (files) — must stay in the user-gesture chain (no setTimeout)
   if(!window.isSecureContext){toast('Open the app via HTTPS (or installed PWA) to share');return}
-  _shareBusy(1,'Creating backup ZIP… 2–3 sec');
+  // Reuse the ZIP prewarmed on pointerdown instead of rebuilding it here — rebuilding from
+  // scratch (reading every table again) can take long enough to burn the browser's user-gesture
+  // window, which makes navigator.share() silently refuse to open. force=false lets the
+  // still-fresh prewarmed cache be used so share() fires immediately after the tap.
   let p;
-  try{p=await _backupZip(true)}catch(e){_shareBusy(0);toast('Could not create ZIP');return}
+  try{p=await _backupZip(false)}catch(e){_shareBusy(0);toast('Could not create ZIP');return}
   _shareBusy(1,'Opening share… pick WhatsApp');
   const title='ATOM POS Backup';
-  const text='*ATOM POS* database backup\n'+p.filename;
-  const zipFile=new File([p.blob],p.filename,{type:'application/zip'});
-  // Build small PNG label (barcode-style second file helps Chrome open the sheet)
-  let files=[zipFile];
-  try{
-    const c=document.createElement('canvas');c.width=400;c.height=200;const x=c.getContext('2d');
-    x.fillStyle='#0f172a';x.fillRect(0,0,400,200);x.fillStyle='#fff';x.font='bold 22px sans-serif';x.textAlign='center';
-    x.fillText('ATOM POS',200,80);x.font='14px sans-serif';x.fillStyle='#94a3b8';x.fillText('Database ZIP backup',200,120);
-    const png=await new Promise(r=>c.toBlob(r,'image/png'));
-    if(png)files=[new File([png],'ATOM-backup.png',{type:'image/png'}),zipFile];
-  }catch(e){}
+  const text='*ATOM POS* database backup\n'+p.filename+'\n\nIn ATOM POS: Admin > Database > Restore Backup, then pick this file.';
+  // iOS Safari has a long-standing WebKit bug: navigator.share({files, title, ...}) — when
+  // BOTH files and title are set — silently shares the title as plain text instead of
+  // attaching the file. Confirmed by multiple developer reports (Apple Developer Forums
+  // thread 665812 and others). Omitting title and sharing files+text only is the known
+  // workaround and makes iOS actually attach the file instead of quietly dropping it.
+  // Chromium's Web Share API only allows sharing a small allow-list of file EXTENSIONS —
+  // audio/image/pdf/video/text. ".zip" is not on that list, so navigator.canShare()/share()
+  // reject a real .zip file no matter what MIME type it's labeled with (relabeling the MIME
+  // type, which the old code tried, doesn't help — Chromium checks the filename extension).
+  // The bytes are unchanged either way, and Restore already detects the backup by its ZIP
+  // magic header rather than by filename, so we share the same bytes under a permitted
+  // ".txt" name and Restore accepts ".txt" files too (see restoreFile accept= in admin.html).
+  const shareName=p.filename.replace(/\.zip$/i,'')+'.txt';
+  const shareFile=new File([p.blob],shareName,{type:'text/plain'});
+  const files=[shareFile];
 
   const shareFn=navigator.share&&navigator.share.bind(navigator);
+  let shareDiag='no navigator.share';
   if(shareFn){
+    shareDiag='canShare()=false';
     try{
-      // Exact barcode pattern
       if(!navigator.canShare||navigator.canShare({files})){
-        await shareFn({files,title,text});
-        _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
+        await shareFn({files,text});
+        _shareBusy(0);toast('Pick WhatsApp — send the file');
         return;
       }
-    }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
-    // Chrome: ZIP MIME blocked — retry ZIP labeled as octet-stream / text (bytes unchanged)
-    for(const type of ['application/octet-stream','text/plain','']){
-      try{
-        const z=new File([p.blob],p.filename,{type});
-        const f2=files.length>1?[files[0],z]:[z];
-        if(!navigator.canShare||navigator.canShare({files:f2})){
-          await shareFn({files:f2,title,text});
-          _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
-          return;
-        }
-        await shareFn({files:f2,title,text});
-        _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
-        return;
-      }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
+    }catch(e){
+      if(e&&e.name==='AbortError'){_shareBusy(0);return}
+      shareDiag=(e&&e.name||'Error')+': '+(e&&e.message||'');
     }
-    // Last Web Share try: PNG only is useless for data; try zip alone without canShare
-    try{
-      await shareFn({files:[new File([p.blob],p.filename,{type:'application/octet-stream'})],title,text});
-      _shareBusy(0);toast('Pick WhatsApp — send the ZIP');
-      return;
-    }catch(e){if(e&&e.name==='AbortError'){_shareBusy(0);return}}
   }
-  // Capacitor native
+  console.warn('[ATOM share] system share sheet unavailable —',shareDiag);
+  // Capacitor native (installed app build) — real files aren't restricted here, share the actual .zip
   try{
     const FS=_capPlugin('Filesystem'),Share=_capPlugin('Share');
     if(FS&&Share){
@@ -249,7 +241,7 @@ async function doShare(){
   }catch(e){}
   _shareBusy(0);
   _dlBlob(p.blob,p.filename);
-  toast('ZIP ready in Downloads — WhatsApp → Attach → Document');
+  toast('Share sheet unavailable ('+shareDiag+') — ZIP saved to Downloads instead');
 }
 
 async function _parseBackupFile(file){
