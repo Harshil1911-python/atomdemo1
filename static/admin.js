@@ -208,8 +208,12 @@ async function doShare(){
   // The bytes are unchanged either way, and Restore already detects the backup by its ZIP
   // magic header rather than by filename, so we share the same bytes under a permitted
   // ".txt" name and Restore accepts ".txt" files too (see restoreFile accept= in admin.html).
-  const shareName=p.filename.replace(/\.zip$/i,'')+'.txt';
-  const shareFile=new File([p.blob],shareName,{type:'text/plain'});
+  // Only Chromium (Chrome/Edge/Samsung Internet/Android WebView) hard-blocks the .zip
+  // extension from Web Share — Safari/WebKit has no such allow-list, so keep the real
+  // .zip name there (and on Capacitor, which never reaches this branch anyway).
+  const isChromium=!!(window.chrome||/Chrome|Chromium|CriOS|Edg\//.test(navigator.userAgent));
+  const shareName=isChromium?p.filename.replace(/\.zip$/i,'')+'.txt':p.filename;
+  const shareFile=new File([p.blob],shareName,{type:isChromium?'text/plain':'application/zip'});
   const files=[shareFile];
 
   const shareFn=navigator.share&&navigator.share.bind(navigator);
