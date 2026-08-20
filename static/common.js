@@ -173,5 +173,33 @@ function logSession(panel){
     localStorage.setItem(key,JSON.stringify(list.slice(0,200)));
   }catch(e){}
 }
-function getBrand(){try{const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');return{store:s.store||'ATOM POS',phone:s.phone||'',addr:s.addr||'',gstin:s.gstin||'',gst:+(s.gst||0),footer:s.footer||'Thank you!',color:s.color||'#4f46e5',logo:s.logo||'',layout:s.layout||'classic'}}catch(e){return{store:'ATOM POS',phone:'',addr:'',gstin:'',gst:0,footer:'Thank you!',color:'#4f46e5',logo:'',layout:'classic'}}}
+
 function getSessions(){try{return JSON.parse(localStorage.getItem('atom_sessions')||'[]')}catch(e){return[]}}
+
+
+function getBrand(){try{const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');return{store:s.store||'ATOM POS',phone:s.phone||'',addr:s.addr||'',gstin:s.gstin||'',gst:+(s.gst||0),footer:s.footer||'Thank you!',color:s.color||'#4f46e5',logo:s.logo||'',layout:s.layout||'classic',paper:+(s.paper||80),blocks:s.blocks||['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer']}}catch(e){return{store:'ATOM POS',phone:'',addr:'',gstin:'',gst:0,footer:'Thank you!',color:'#4f46e5',logo:'',layout:'classic',paper:80,blocks:['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer']}}}
+function invW(mm){return(+mm===58)?384:576}
+async function renderThermalPng(meta,items,mm){
+  const b=getBrand();mm=+(mm||b.paper||80);const W=invW(mm),pad=Math.round(W*0.06);
+  const n=(items||[]).length,H=Math.max(480,200+n*30+220);
+  const c=document.createElement('canvas');c.width=W;c.height=H;const ctx=c.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.fillStyle='#0f172a';ctx.textAlign='center';
+  let y=pad;const cx=W/2,fs=mm===58?13:15,fs2=mm===58?11:13;
+  const line=()=>{ctx.strokeStyle='#cbd5e1';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();y+=10};
+  for(const bl of(b.blocks||['store','items','totals','footer'])){
+    if(bl==='logo'&&b.logo){await new Promise(res=>{const img=new Image();img.onload=()=>{const s=mm===58?40:56;ctx.drawImage(img,cx-s/2,y,s,s);y+=s+8;res()};img.onerror=res;img.src=b.logo});continue}
+    if(bl==='store'){ctx.font='bold '+(fs+4)+'px system-ui,sans-serif';ctx.fillText(String(b.store||'ATOM POS').slice(0,mm===58?22:30),cx,y+fs);y+=fs+12;continue}
+    if(bl==='addr'&&b.addr){ctx.font=fs2+'px system-ui';ctx.fillStyle='#475569';String(b.addr).match(/.{1,28}/g)?.slice(0,3).forEach(t=>{ctx.fillText(t,cx,y);y+=fs2+4});ctx.fillStyle='#0f172a';y+=4;continue}
+    if(bl==='phone'&&b.phone){ctx.font=fs2+'px system-ui';ctx.fillStyle='#475569';ctx.fillText(String(b.phone),cx,y);y+=fs2+8;ctx.fillStyle='#0f172a';continue}
+    if(bl==='gstin'&&b.gstin){ctx.font=fs2+'px system-ui';ctx.fillStyle='#475569';ctx.fillText('GSTIN: '+b.gstin,cx,y);y+=fs2+8;ctx.fillStyle='#0f172a';continue}
+    if(bl==='line'){line();continue}
+    if(bl==='inv'){ctx.font='bold '+fs+'px system-ui';ctx.fillText('INV #'+(meta.invNo||''),cx,y);y+=fs+6;ctx.font=fs2+'px system-ui';ctx.fillStyle='#64748b';ctx.fillText(meta.dateStr||'',cx,y);y+=fs2+10;ctx.fillStyle='#0f172a';continue}
+    if(bl==='customer'){ctx.font=fs2+'px system-ui';ctx.fillText('To: '+(meta.customer||'Walk-in'),cx,y);y+=fs2+8;continue}
+    if(bl==='pay'){ctx.font=fs2+'px system-ui';ctx.fillStyle='#64748b';ctx.fillText((meta.status==='unpaid'?'UNPAID':'PAID')+(meta.payMethod?' · '+String(meta.payMethod).toUpperCase():''),cx,y);y+=fs2+10;ctx.fillStyle='#0f172a';continue}
+    if(bl==='items'){ctx.font='bold '+fs2+'px system-ui';ctx.textAlign='left';ctx.fillText('Item',pad,y);ctx.textAlign='center';ctx.fillText('Qty',W*0.62,y);ctx.textAlign='right';ctx.fillText('Amt',W-pad,y);y+=fs2+6;ctx.font=fs2+'px system-ui';(items||[]).forEach(it=>{const amt=(+it.qty||0)*(+it.price||0);ctx.textAlign='left';ctx.fillText(String(it.name||'').slice(0,mm===58?16:22),pad,y);ctx.textAlign='center';ctx.fillText(String(it.qty||0),W*0.62,y);ctx.textAlign='right';ctx.fillText('₹'+amt.toFixed(2),W-pad,y);y+=fs2+8});ctx.textAlign='center';y+=4;continue}
+    if(bl==='totals'){ctx.textAlign='left';ctx.font=fs2+'px system-ui';ctx.fillStyle='#64748b';if(meta.sub!=null){ctx.fillText('Subtotal',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.sub).toFixed(2),W-pad,y);ctx.textAlign='left';y+=fs2+6}if(+meta.disc){ctx.fillText('Discount',pad,y);ctx.textAlign='right';ctx.fillText('-₹'+(+meta.disc).toFixed(2),W-pad,y);ctx.textAlign='left';y+=fs2+6}ctx.fillStyle='#0f172a';ctx.font='bold '+(fs+2)+'px system-ui';ctx.fillText('TOTAL',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.total).toFixed(2),W-pad,y);ctx.textAlign='center';y+=fs+14;continue}
+    if(bl==='footer'){ctx.font=fs2+'px system-ui';ctx.fillStyle='#64748b';ctx.fillText(String(b.footer||'Thank you!').slice(0,mm===58?24:36),cx,y);y+=fs2+10;ctx.font='10px system-ui';ctx.fillText(mm+'mm · ATOM POS',cx,y);y+=14}
+  }
+  const out=document.createElement('canvas');out.width=W;out.height=Math.min(H,Math.max(y+pad,200));out.getContext('2d').drawImage(c,0,0);
+  return await new Promise(r=>out.toBlob(r,'image/png'));
+}

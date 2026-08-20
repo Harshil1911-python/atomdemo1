@@ -734,6 +734,8 @@ async function bulkPrintBarcodes(){
 
 
 
+
+const INV_BLOCK_LABELS={logo:'Logo',store:'Store name',addr:'Address',phone:'Phone',gstin:'GSTIN',line:'Divider',inv:'Invoice # / date',customer:'Customer',pay:'Payment status',items:'Line items',totals:'Totals',footer:'Footer'};
 function loadInvoice(){
   const b=getBrand();
   if($('#invStore'))$('#invStore').value=b.store||'';
@@ -741,77 +743,27 @@ function loadInvoice(){
   if($('#invAddr'))$('#invAddr').value=b.addr||'';
   if($('#invGstin'))$('#invGstin').value=b.gstin||'';
   if($('#invFooter'))$('#invFooter').value=b.footer||'Thank you!';
-  if($('#invColor'))$('#invColor').value=b.color||'#4f46e5';
-  if($('#invLayout'))$('#invLayout').value=b.layout||'classic';
+  if($('#invPaper'))$('#invPaper').value=String(b.paper||80);
   if($('#invLogoPrev'))$('#invLogoPrev').innerHTML=b.logo?'<img src="'+b.logo+'" style="max-height:48px;border-radius:8px">':'';
+  const box=$('#invBlocks');if(!box)return;
+  const blocks=b.blocks||['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer'];
+  box.innerHTML=blocks.map((id,i)=>'<div class="inv-blk" draggable="true" data-id="'+id+'" style="padding:12px 14px;border-bottom:1px solid var(--bd);background:#fff;font-size:13px;font-weight:600;cursor:grab;display:flex;justify-content:space-between"><span>'+(INV_BLOCK_LABELS[id]||id)+'</span><span style="color:var(--m);font-weight:500">⋮⋮</span></div>').join('');
+  let drag=null;
+  box.querySelectorAll('.inv-blk').forEach(el=>{
+    el.ondragstart=()=>{drag=el;el.style.opacity=.5};
+    el.ondragend=()=>{el.style.opacity=1;drag=null};
+    el.ondragover=e=>e.preventDefault();
+    el.ondrop=e=>{e.preventDefault();if(!drag||drag===el)return;const all=[...box.querySelectorAll('.inv-blk')];const id=all.indexOf(el),jd=all.indexOf(drag);if(id<0||jd<0)return;if(jd<id)el.after(drag);else el.before(drag)};
+  });
 }
 function saveInvoice(){
   let s={};try{s=JSON.parse(localStorage.getItem('atom_prefs')||'{}')}catch(e){}
-  s.store=($('#invStore')?.value||'').trim()||s.store;
-  s.phone=($('#invPhone')?.value||'').trim()||s.phone;
-  s.addr=($('#invAddr')?.value||'').trim()||s.addr;
-  s.gstin=($('#invGstin')?.value||'').trim();
-  s.footer=($('#invFooter')?.value||'').trim()||'Thank you!';
-  s.color=$('#invColor')?.value||'#4f46e5';
-  s.layout=$('#invLayout')?.value||'classic';
+  s.store=($('#invStore')?.value||'').trim()||s.store||'ATOM POS';
+  s.phone=($('#invPhone')?.value||'').trim();s.addr=($('#invAddr')?.value||'').trim();
+  s.gstin=($('#invGstin')?.value||'').trim();s.footer=($('#invFooter')?.value||'').trim()||'Thank you!';
+  s.paper=+($('#invPaper')?.value||80);s.blocks=[...$$('#invBlocks .inv-blk')].map(el=>el.dataset.id);
   if(window._invLogoData)s.logo=window._invLogoData;
-  localStorage.setItem('atom_prefs',JSON.stringify(s));
-  // sync basic prefs fields
-  if($('#prefStore')&&s.store)$('#prefStore').value=s.store;
-  toast('Invoice design saved');
-}
-function drawInvoiceCanvas(c,meta,items){
-  const b=getBrand(),ctx=c.getContext('2d'),W=c.width,pad=28;
-  let y=pad;
-  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,c.height);
-  const accent=b.color||'#4f46e5';
-  ctx.fillStyle=accent;ctx.fillRect(0,0,W,6);
-  if(b.logo){try{/* logo drawn async optional */}catch(e){}}
-  ctx.fillStyle='#0f172a';ctx.font='bold 22px system-ui,sans-serif';ctx.textAlign='left';
-  ctx.fillText((b.store||'ATOM POS').slice(0,28),pad,y+28);y+=44;
-  ctx.font='12px system-ui';ctx.fillStyle='#64748b';
-  if(b.addr){ctx.fillText(b.addr.slice(0,42),pad,y);y+=18}
-  if(b.phone){ctx.fillText(b.phone,pad,y);y+=18}
-  if(b.gstin){ctx.fillText('GSTIN: '+b.gstin,pad,y);y+=18}
-  y+=8;ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();y+=24;
-  ctx.fillStyle='#0f172a';ctx.font='bold 16px system-ui';
-  ctx.fillText('INVOICE #'+(meta.invNo||''),pad,y);
-  ctx.font='12px system-ui';ctx.fillStyle='#64748b';ctx.textAlign='right';
-  ctx.fillText(meta.dateStr||'',W-pad,y);ctx.textAlign='left';y+=22;
-  ctx.fillText('Bill to: '+(meta.customer||'Walk-in'),pad,y);y+=18;
-  ctx.fillText((meta.status==='unpaid'?'UNPAID / CREDIT':'Paid')+(meta.payMethod?' · '+meta.payMethod:''),pad,y);y+=20;
-  ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();y+=20;
-  const compact=b.layout==='compact';
-  ctx.font=compact?'11px system-ui':'12px system-ui';ctx.fillStyle='#94a3b8';
-  ctx.fillText('Item',pad,y);ctx.textAlign='center';ctx.fillText('Qty',W*0.62,y);ctx.textAlign='right';ctx.fillText('Amount',W-pad,y);ctx.textAlign='left';y+=16;
-  ctx.fillStyle='#0f172a';
-  (items||[]).forEach(it=>{
-    const line=(it.name||'').slice(0,compact?22:28);
-    const amt=(+it.qty||0)*(+it.price||0);
-    ctx.fillText(line,pad,y);
-    ctx.textAlign='center';ctx.fillText(String(it.qty||0),W*0.62,y);
-    ctx.textAlign='right';ctx.fillText('₹'+amt.toFixed(2),W-pad,y);ctx.textAlign='left';
-    y+=compact?16:20;
-  });
-  y+=8;ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();y+=22;
-  ctx.font='12px system-ui';ctx.fillStyle='#64748b';
-  if(meta.sub!=null){ctx.fillText('Subtotal',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.sub).toFixed(2),W-pad,y);ctx.textAlign='left';y+=18}
-  if(meta.disc){ctx.fillText('Discount',pad,y);ctx.textAlign='right';ctx.fillText('-₹'+(+meta.disc).toFixed(2),W-pad,y);ctx.textAlign='left';y+=18}
-  ctx.fillStyle=accent;ctx.font='bold 18px system-ui';
-  ctx.fillText('Total',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.total).toFixed(2),W-pad,y);ctx.textAlign='left';y+=36;
-  ctx.fillStyle='#64748b';ctx.font='12px system-ui';ctx.textAlign='center';
-  ctx.fillText((b.footer||'Thank you!').slice(0,48),W/2,y);
-  ctx.font='10px system-ui';ctx.fillStyle='#94a3b8';ctx.fillText('ATOM POS',W/2,c.height-16);
-  return c;
-}
-async function renderInvoicePng(meta,items){
-  const c=document.createElement('canvas');c.width=400;c.height=Math.max(560,180+(items||[]).length*22);
-  drawInvoiceCanvas(c,meta,items);
-  const b=getBrand();
-  if(b.logo){
-    await new Promise(res=>{const img=new Image();img.onload=()=>{const ctx=c.getContext('2d');ctx.drawImage(img,c.width-28-48,20,48,48);res()};img.onerror=res;img.src=b.logo});
-  }
-  return await new Promise(r=>c.toBlob(r,'image/png'));
+  localStorage.setItem('atom_prefs',JSON.stringify(s));toast('Invoice design saved');
 }
 
 function loadPrefs(){
@@ -876,8 +828,8 @@ function savePrefs(){
   if($('#invLogo'))$('#invLogo').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{window._invLogoData=ev.target.result;if($('#invLogoPrev'))$('#invLogoPrev').innerHTML='<img src="'+ev.target.result+'" style="max-height:48px;border-radius:8px">'};r.readAsDataURL(f)};
   if($('#btnPrevInv'))$('#btnPrevInv').onclick=async()=>{
     saveInvoice();
-    const blob=await renderInvoicePng({invNo:'1001',total:999,sub:999,disc:0,customer:'Sample Customer',status:'paid',payMethod:'cash',dateStr:new Date().toLocaleString('en-IN')},[{name:'Sample item',qty:1,price:999}]);
-    const url=URL.createObjectURL(blob);const cv=$('#invPrevCanvas');if(cv){cv.style.display='block';const img=new Image();img.onload=()=>{cv.width=img.width;cv.height=img.height;cv.getContext('2d').drawImage(img,0,0);URL.revokeObjectURL(url)};img.src=url}
+    const blob=await renderThermalPng({invNo:'1001',total:150,sub:150,disc:0,customer:'Sample',status:'paid',payMethod:'cash',dateStr:new Date().toLocaleString('en-IN')},[{name:'Item A',qty:1,price:100},{name:'Item B',qty:1,price:50}],+($('#invPaper')?.value||80));
+    if($('#invPrevImg')){$('#invPrevImg').src=URL.createObjectURL(blob);$('#invPrevImg').style.display='inline-block'}
   };
   if($('#btnDownload'))$('#btnDownload').onclick=doDownload;
   if($('#btnShare')){const b=$('#btnShare');b.onpointerdown=()=>prewarmBackup();b.onclick=()=>doShare()}
