@@ -195,6 +195,11 @@
 <div class="sheet" id="sheetCat"><div class="sheet-h"><h3>Category</h3><button type="button" id="sheetCatX">×</button></div><div class="sheet-b" id="sheetCatB"></div></div>
 <div class="sheet" id="sheetSt"><div class="sheet-h"><h3>Out of Stock</h3><button id="sheetStX">×</button></div><div class="sheet-b" id="sheetStB"></div></div>
 <div class="sheet" id="sheetUnpaid"><div class="sheet-h"><h3>Mark Payment Received</h3><button id="sheetUpX">×</button></div><div class="sheet-b" id="sheetUpB"></div></div>
+<div class="modal" id="invM"><div class="mbox"><div class="mhd">Invoice <button type="button" id="invX">×</button></div><div class="mbd" style="text-align:center">
+  <img id="invImg" alt="Invoice" style="max-width:100%;border-radius:12px;border:1px solid var(--bd);background:#fff">
+  <button type="button" class="save" id="invShare" style="width:100%;margin-top:12px;padding:13px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:600">Share PNG</button>
+  <button type="button" class="btn" id="invSkip" style="width:100%;margin-top:8px">Close</button>
+</div></div></div>
 <div class="modal" id="calcM"><div class="mbox"><div class="mhd">Calculator <button id="calcX">×</button></div><div class="mbd"><div class="calc-d" id="calcD">0</div><div class="calc-sub" id="calcSub"></div><div class="calc-g" id="calcG"></div></div></div></div>
 <div class="modal" id="coChoice"><div class="mbox"><div class="mhd">Checkout <button id="coChoiceX">×</button></div><div class="mbd">
   <p style="font-size:13px;color:var(--m);margin-bottom:14px;font-weight:500">Choose what to do next</p>
@@ -654,7 +659,63 @@ $('#coX').onclick=()=>$('#coM').classList.remove('on');
 $$('#coPayM button').forEach(btn=>btn.onclick=()=>{payMethod=btn.dataset.m;$$('#coPayM button').forEach(x=>x.classList.toggle('on',x.dataset.m===payMethod))});
 $('#coSeg').onclick=e=>{const b=e.target.closest('button');if(!b)return;payStatus=b.dataset.s;$$('#coSeg button').forEach(x=>x.classList.toggle('on',x===b));const pm=$('#coPayM');if(pm)pm.style.display=payStatus==='paid'?'grid':'none'};
 
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();try{await askNotify()}catch(e){}checkStockAlerts();showView('home');try{closeShell()}catch(e){}};
+
+let _invBlob=null;
+async function buildSaleInvoice(meta,items){
+  const c=document.createElement('canvas');
+  c.width=400;c.height=Math.max(560,200+(items||[]).length*22);
+  const brand=typeof getBrand==='function'?getBrand():{store:'ATOM POS',footer:'Thank you!',color:'#4f46e5',layout:'classic'};
+  const ctx=c.getContext('2d'),pad=28;let y=pad;
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+  ctx.fillStyle=brand.color||'#4f46e5';ctx.fillRect(0,0,c.width,6);
+  ctx.fillStyle='#0f172a';ctx.font='bold 22px system-ui,sans-serif';ctx.fillText((brand.store||'ATOM POS').slice(0,28),pad,y+28);y+=44;
+  ctx.font='12px system-ui';ctx.fillStyle='#64748b';
+  if(brand.addr){ctx.fillText(String(brand.addr).slice(0,42),pad,y);y+=18}
+  if(brand.phone){ctx.fillText(String(brand.phone),pad,y);y+=18}
+  if(brand.gstin){ctx.fillText('GSTIN: '+brand.gstin,pad,y);y+=18}
+  y+=6;ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(c.width-pad,y);ctx.stroke();y+=22;
+  ctx.fillStyle='#0f172a';ctx.font='bold 16px system-ui';ctx.fillText('INVOICE #'+(meta.invNo||''),pad,y);
+  ctx.font='12px system-ui';ctx.fillStyle='#64748b';ctx.textAlign='right';ctx.fillText(meta.dateStr||'',c.width-pad,y);ctx.textAlign='left';y+=20;
+  ctx.fillText('Bill to: '+(meta.customer||'Walk-in'),pad,y);y+=16;
+  ctx.fillText((meta.status==='unpaid'?'UNPAID':'Paid')+(meta.payMethod?' · '+meta.payMethod:''),pad,y);y+=18;
+  ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(c.width-pad,y);ctx.stroke();y+=18;
+  ctx.fillStyle='#94a3b8';ctx.fillText('Item',pad,y);ctx.textAlign='center';ctx.fillText('Qty',c.width*0.62,y);ctx.textAlign='right';ctx.fillText('Amt',c.width-pad,y);ctx.textAlign='left';y+=16;
+  ctx.fillStyle='#0f172a';
+  (items||[]).forEach(it=>{const amt=(+it.qty||0)*(+it.price||0);ctx.fillText(String(it.name||'').slice(0,26),pad,y);ctx.textAlign='center';ctx.fillText(String(it.qty||0),c.width*0.62,y);ctx.textAlign='right';ctx.fillText('₹'+amt.toFixed(2),c.width-pad,y);ctx.textAlign='left';y+=18});
+  y+=6;ctx.strokeStyle='#e2e8f0';ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(c.width-pad,y);ctx.stroke();y+=20;
+  ctx.fillStyle='#64748b';ctx.font='12px system-ui';
+  if(meta.sub!=null){ctx.fillText('Subtotal',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.sub).toFixed(2),c.width-pad,y);ctx.textAlign='left';y+=16}
+  if(+meta.disc){ctx.fillText('Discount',pad,y);ctx.textAlign='right';ctx.fillText('-₹'+(+meta.disc).toFixed(2),c.width-pad,y);ctx.textAlign='left';y+=16}
+  ctx.fillStyle=brand.color||'#4f46e5';ctx.font='bold 18px system-ui';ctx.fillText('Total',pad,y);ctx.textAlign='right';ctx.fillText('₹'+(+meta.total).toFixed(2),c.width-pad,y);ctx.textAlign='left';y+=32;
+  ctx.fillStyle='#64748b';ctx.font='12px system-ui';ctx.textAlign='center';ctx.fillText(String(brand.footer||'Thank you!').slice(0,48),c.width/2,y);
+  if(brand.logo){await new Promise(res=>{const img=new Image();img.onload=()=>{ctx.drawImage(img,c.width-76,18,48,48);res()};img.onerror=res;img.src=brand.logo})}
+  return await new Promise(r=>c.toBlob(r,'image/png'));
+}
+async function offerInvoice(meta,items){
+  try{
+    _invBlob=await buildSaleInvoice(meta,items);
+    if($('#invImg'))$('#invImg').src=URL.createObjectURL(_invBlob);
+    if($('#invM'))$('#invM').classList.add('on');
+  }catch(e){console.warn(e)}
+}
+async function shareInvoicePng(){
+  if(!_invBlob)return toast('No invoice');
+  const file=new File([_invBlob],'ATOM-invoice.png',{type:'image/png'});
+  try{
+    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+      await navigator.share({files:[file],title:'Invoice',text:'ATOM POS Invoice'});
+      toast('Pick WhatsApp');return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(_invBlob);a.download='ATOM-invoice.png';a.click();
+  toast('PNG saved');
+}
+if($('#invShare'))$('#invShare').onclick=()=>shareInvoicePng();
+if($('#invX'))$('#invX').onclick=()=>{$('#invM').classList.remove('on')};
+if($('#invSkip'))$('#invSkip').onclick=()=>{$('#invM').classList.remove('on')};
+
+
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}const invItems=cart.map(c=>({name:c.name,price:c.price,qty:c.qty}));const invMeta={invNo,total,sub,disc,customer:name||'Walk-in',status:payStatus,payMethod:payStatus==='paid'?payMethod:null,dateStr:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})};cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();try{await askNotify()}catch(e){}checkStockAlerts();showView('home');try{closeShell()}catch(e){}offerInvoice(invMeta,invItems)};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 

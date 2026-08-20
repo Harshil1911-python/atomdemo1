@@ -160,7 +160,7 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
-'<div class="adm-sub" id="sub-settings"><button type="button" data-act="prefs">Preferences</button><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="shift">Shift info</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
+'<div class="adm-sub" id="sub-settings"><button type="button" data-act="prefs">Preferences</button><button type="button" data-act="invoice">Invoice design</button><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="shift">Shift info</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
 
 function logSession(panel){
@@ -173,4 +173,5 @@ function logSession(panel){
     localStorage.setItem(key,JSON.stringify(list.slice(0,200)));
   }catch(e){}
 }
+function getBrand(){try{const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');return{store:s.store||'ATOM POS',phone:s.phone||'',addr:s.addr||'',gstin:s.gstin||'',gst:+(s.gst||0),footer:s.footer||'Thank you!',color:s.color||'#4f46e5',logo:s.logo||'',layout:s.layout||'classic'}}catch(e){return{store:'ATOM POS',phone:'',addr:'',gstin:'',gst:0,footer:'Thank you!',color:'#4f46e5',logo:'',layout:'classic'}}}
 function getSessions(){try{return JSON.parse(localStorage.getItem('atom_sessions')||'[]')}catch(e){return[]}}

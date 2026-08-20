@@ -114,6 +114,27 @@
     </div>
 
     <!-- Preferences -->
+    
+    <div class="panel-view" id="viewInvoice">
+      <div class="sec-title">Invoice design</div>
+      <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Branding for bills generated in Billing. Saved on this device.</p>
+      <div class="af">
+        <label>Business name</label><input id="invStore" placeholder="Store name">
+        <label>Phone</label><input id="invPhone" placeholder="Phone">
+        <label>Address</label><input id="invAddr" placeholder="Address">
+        <label>GSTIN</label><input id="invGstin" placeholder="GSTIN (optional)">
+        <label>Footer note</label><input id="invFooter" placeholder="Thank you for your purchase">
+        <label>Accent color</label><input id="invColor" type="color" value="#4f46e5" style="height:42px;padding:4px">
+        <label>Layout</label>
+        <select id="invLayout"><option value="classic">Classic</option><option value="compact">Compact</option></select>
+        <label>Logo (optional)</label><input type="file" id="invLogo" accept="image/*">
+        <div id="invLogoPrev" style="margin:8px 0"></div>
+        <button type="button" class="btn btn-p" id="btnSaveInv" style="width:100%;margin-top:8px">Save invoice design</button>
+        <button type="button" class="btn" id="btnPrevInv" style="width:100%;margin-top:8px">Preview sample</button>
+      </div>
+      <canvas id="invPrevCanvas" width="360" height="520" style="width:100%;max-width:360px;margin:14px auto 0;display:none;border:1px solid var(--bd);border-radius:12px;background:#fff"></canvas>
+    </div>
+
     <div class="panel-view" id="viewPrefs">
       <div class="sec-title">Preferences</div>
       <p style="font-size:13px;color:var(--m);margin-bottom:12px;font-weight:500">Store profile &amp; defaults (saved in this browser).</p>
