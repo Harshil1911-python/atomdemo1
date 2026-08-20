@@ -791,6 +791,7 @@ function savePrefs(){
   const _m=$('#btnMenu'),_d=$('#dr'),_o=$('#ov');
   if(_m&&_d)_m.onclick=e=>{e.preventDefault();e.stopPropagation();if(_d.classList.contains('on'))closeShell();else{_d.classList.add('on');if(_o)_o.classList.add('on')}};
   if($('#admOverview'))$('#admOverview').onclick=()=>{closeDr();showAdminView('#viewMain');refresh()};
+  if($('#admInvoice'))$('#admInvoice').onclick=()=>{closeDr();showAdminView('#viewInvoice');loadInvoice()};
   if($('#admNotif'))$('#admNotif').onclick=async()=>{closeDr();const ok=await askNotify();if(ok){notify('ATOM POS','Notifications are working');toast('Test notification sent')}else toast('Allow notifications to enable alerts')};
   $$('.adm-sub button').forEach(b=>{
     b.onclick=()=>{

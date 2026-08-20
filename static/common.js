@@ -132,7 +132,7 @@ function panelLinks(active){
 '<div class="panel-opts" id="panelOpts">'+
 '<a href="/admin"'+(active==='admin'?' class="active"':'')+'><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Admin<small>Manage products &amp; store</small></span></a>'+
 '<a href="/billing"'+(active==='billing'?' class="active"':'')+'><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Billing<small>Point of sale</small></span></a>'+
-'<a href="/accountant" class="paused'+(active==='accountant'?' active':'')+'"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Accountant<small>Paused · coming soon</small></span></a>'+
+'<a href="/accountant"'+(active==='accountant'?' class="active"':'')+'><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Accountant<small>P&amp;L · Balance sheet</small></span></a>'+
 '</div></div>';
 }
 
@@ -140,7 +140,7 @@ function adminMenu(){
   const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
   return '<div class="install-banner" id="installBanner"><p>Install ATOM POS on this device</p><button type="button" id="btnInstallPwa">Add to Home Screen</button></div>'+
 '<button type="button" class="adm-link" id="admOverview">Overview</button>'+
-'<button type="button" class="adm-link" id="admNotif">Notifications</button>'+
+'<button type="button" class="adm-link" id="admNotif">Notifications</button>'+'<button type="button" class="adm-link" id="admInvoice">Invoice design</button>'+
 '<button type="button" class="adm-drop" data-g="products">Products'+chev+'</button>'+
 '<div class="adm-sub" id="sub-products">'+
 '<button type="button" data-act="add-product">Add Product</button>'+
@@ -160,7 +160,7 @@ function adminMenu(){
 '<button type="button" class="adm-drop" data-g="relations">Relations'+chev+'</button>'+
 '<div class="adm-sub" id="sub-relations"><button type="button" data-act="customers">Customers</button><button type="button" data-act="suppliers">Suppliers</button></div>'+
 '<button type="button" class="adm-drop" data-g="settings">Settings'+chev+'</button>'+
-'<div class="adm-sub" id="sub-settings"><button type="button" data-act="prefs">Preferences</button><button type="button" data-act="invoice">Invoice design</button><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="shift">Shift info</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
+'<div class="adm-sub" id="sub-settings"><button type="button" data-act="prefs">Preferences</button><button type="button" data-act="invoice">🧾 Invoice design</button><button type="button" data-act="database">Database</button><button type="button" data-act="payment-log">Payment log</button><button type="button" data-act="shift">Shift info</button><button type="button" data-act="sessions">Sessions</button><button type="button" data-act="panel">Change Panel</button></div>';
 }
 
 function logSession(panel){

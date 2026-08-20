@@ -299,7 +299,7 @@ async function setShift(on){
   if(on){
     const v=await appPrompt('Open shift','Opening cash in drawer (₹)','0');
     if(v===null)return;
-    localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:+v||0,sales:0,cash:0,upi:0,card:0,other:0,returns:0}));
+    localStorage.setItem('atom_shift_data',JSON.stringify({open:true,openedAt:new Date().toISOString(),openingCash:+v||0,sales:0,cash:0,upi:0,card:0,other:0,returns:0,drawings:0}));
     toast('Shift opened · cash ₹'+(+v||0));
   }else{
     const s=shiftData()||{};s.open=false;s.closedAt=new Date().toISOString();localStorage.setItem('atom_shift_data',JSON.stringify(s));
@@ -336,7 +336,7 @@ function openMoreActions(){
   const on=shiftOn();
   const cell=(a,label,ic)=>'<button type="button" class="act-ico" data-a="'+a+'"><div class="ic">'+ic+'</div><span>'+label+'</span></button>';
   $('#sheetMoreB').innerHTML=
-    '<div class="act-shift"><div><b>Shift</b><small>'+(on?('On · ₹'+((shiftData()||{}).sales||0)):'Off duty')+'</small></div><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
+    '<div class="act-shift"><div><b>Shift</b><small>'+(on?('On · sales ₹'+((shiftData()||{}).sales||0)+' · draw ₹'+((shiftData()||{}).drawings||0)):'Off duty')+'</small></div><button type="button" class="sw'+(on?' on':'')+'" id="shiftSw"><i></i></button></div>'+
     '<div class="act-grid">'+
     cell('purret','Purchase return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`)+
     cell('saleret','Sales return',`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`)+
@@ -366,16 +366,22 @@ async function runMore(a){
   }
   if(a==='pay'||a==='recv'){
     const dir=a==='pay'?'out':'in';
-    openAct(a==='pay'?'Make payment':'Receive payment',`<div class="af"><label>Amount (₹) *</label><input id="payAmt" type="number" min="0" step="0.01"><label>Search party</label><input id="payPartyQ" placeholder="Name or phone" autocomplete="off"><div id="payPartyPicks"></div><input type="hidden" id="payPartyId" value=""><label>Note</label><input id="payNote"><button class="save" id="paySave" type="button">Confirm</button></div>`);
+    const cats=dir==='out'
+      ?[['operating','Operating expenses'],['salary','Salary'],['rent','Rent'],['utilities','Utilities'],['transport','Transport'],['purchase','Purchase payment'],['drawings','Drawings'],['loan','Loan repayment'],['other_exp','Other expense'],['other','Other']]
+      :[['sales','Sales receipt'],['capital','Capital / investment'],['loan_in','Loan received'],['other_inc','Other income'],['other','Other']];
+    const catOpts=cats.map(([v,l])=>'<option value="'+v+'">'+l+'</option>').join('');
+    openAct(a==='pay'?'Make payment':'Receive payment',`<div class="af"><label>Amount (₹) *</label><input id="payAmt" type="number" min="0" step="0.01"><label>Type of payment</label><select id="payCat">`+catOpts+`</select><label>Search party</label><input id="payPartyQ" placeholder="Name or phone" autocomplete="off"><div id="payPartyPicks"></div><input type="hidden" id="payPartyId" value=""><label>Note</label><input id="payNote" placeholder="Optional note"><button class="save" id="paySave" type="button">Confirm</button></div>`);
     bindPartySearch('#payPartyQ','#payPartyPicks','#payPartyId');
     $('#paySave').onclick=async()=>{
       const amt=+$('#payAmt').value;if(!(amt>0))return toast('Enter amount');
+      const cat=$('#payCat').value,catLabel=($('#payCat').selectedOptions[0]||{}).text||cat;
       const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
       const partyId=+$('#payPartyId').value||null;let partyName='';
       if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=Math.max(0,(+p.credit||0)+(dir==='in'?-amt:amt));await put('parties',p)}}
-      await put('finance',{type:'payment',direction:dir,amount:amt,partyId,partyName,note:$('#payNote').value.trim()||(dir==='in'?'Receive':'Pay'),at:now.toISOString(),ist,source:'misc'});
+      const note=($('#payNote').value.trim()||catLabel);
+      await put('finance',{type:'payment',direction:dir,amount:amt,category:cat,partyId,partyName,note,at:now.toISOString(),ist,source:cat});
       if(dir==='in'){let left=amt;for(const tx of (await all('transactions')).filter(t=>t.status==='unpaid').sort((x,y)=>(x.date||'').localeCompare(y.date||''))){if(left<=0)break;if((+tx.amount||0)<=left){left-=+tx.amount;tx.status='paid';await put('transactions',tx)}}}
-      if(shiftOn()&&dir==='in')bumpShift('cash',amt);
+      if(shiftOn()){if(dir==='in')bumpShift('cash',amt);if(cat==='drawings')bumpShift('drawings',amt)}
       $('#actM').classList.remove('on');toast(dir==='in'?'Payment received':'Payment made');try{await renderTx()}catch(e){}
     };return;
   }
@@ -679,11 +685,27 @@ async function offerInvoice(meta,items){
     if($('#invM'))$('#invM').classList.add('on');
   }catch(e){console.warn(e)}
 }
+function invoiceShareText(meta){
+  const shop=(typeof getBrand==='function'?getBrand().store:null)||'Our Store';
+  const cust=(meta&&meta.customer||'').trim();
+  const dear=cust&&cust.toLowerCase()!=='walk-in'?('Dear Customer, '+cust):'Dear Customer,';
+  const paid=meta&&meta.status==='unpaid'?'UNPAID':'PAID';
+  const total=meta?((+meta.total)||0):0;
+  return shop+'\n\n'+dear+'\n\nHope you had a great shopping experience with us.\nHere is a quick summary of your bill.\n\nTotal: ₹'+total.toFixed(2)+' · '+paid+'\n\nPOWERED BY ATOM POS\nThank you for shopping with '+shop;
+}
 async function shareInvoicePng(){
-  if(!_invBlob)_invBlob=await renderThermalPng(_invMeta,_invItems,getBrand().paper||80);
-  const file=new File([_invBlob],'ATOM-invoice.png',{type:'image/png'});
-  try{if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:'Invoice',text:'ATOM POS Invoice'});toast('Pick app to share');return}}catch(e){if(e&&e.name==='AbortError')return}
-  const a=document.createElement('a');a.href=URL.createObjectURL(_invBlob);a.download='ATOM-invoice.png';a.click();toast('PNG saved');
+  const text=invoiceShareText(_invMeta);
+  if(!_invBlob&&_invMeta)_invBlob=await renderThermalPng(_invMeta,_invItems||[],(getBrand().paper||80));
+  const file=_invBlob?new File([_invBlob],'invoice.png',{type:'image/png'}):null;
+  try{
+    if(navigator.share){
+      if(file&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],title:(getBrand().store||'Invoice'),text});toast('Pick app to share');return}
+      await navigator.share({title:(getBrand().store||'Invoice'),text});toast('Pick app to share');return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return}
+  if(file){const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download='invoice.png';a.click()}
+  try{await navigator.clipboard.writeText(text)}catch(e){}
+  toast('Invoice ready');
 }
 async function printInvoice(mm){
   const blob=await renderThermalPng(_invMeta,_invItems,mm);
@@ -719,6 +741,15 @@ async function renderTx(){
   if($('#txSelectAll'))$('#txSelectAll').onclick=()=>{selMode=!selMode;$$('#txList .tx-chk').forEach(l=>l.style.display=selMode?'':'none');if($('#txHideSel'))$('#txHideSel').style.display=selMode?'':'none';if($('#txCheckAll'))$('#txCheckAll').style.display=selMode?'':'none';$('#txSelectAll').textContent=selMode?'Cancel':'Select';if(!selMode)$$('#txList .tx-chk input').forEach(c=>c.checked=false)};
   if($('#txCheckAll'))$('#txCheckAll').onclick=()=>$$('#txList .tx-chk input').forEach(c=>c.checked=true);
   if($('#txHideSel'))$('#txHideSel').onclick=()=>{const ids=[...$$('#txList .tx-chk input:checked')].map(i=>String(i.dataset.id));if(!ids.length)return toast('Select rows');const h=JSON.parse(localStorage.getItem('atom_tx_hide')||'[]');ids.forEach(id=>{if(!h.includes(id))h.push(id)});localStorage.setItem('atom_tx_hide',JSON.stringify(h));renderTx()};
+  $$('#txList .tx').forEach(row=>{
+    row.style.cursor='pointer';
+    row.onclick=async e=>{
+      if(e.target.closest('.tx-hide,.tx-chk,input,button'))return;
+      const id=row.dataset.id;const t=(await all('transactions')).find(x=>String(x.id)===String(id));if(!t)return;
+      const items=t.items||[];const invNo=(t.subtitle||'').replace(/^Invoice\s*#?/i,'').split('•')[0].trim()||'';
+      offerInvoice({invNo,total:+t.amount||0,sub:t.subtotal!=null?+t.subtotal:+t.amount||0,disc:+t.discount||0,customer:t.title||'Walk-in',status:t.status||'paid',payMethod:t.payMethod||null,dateStr:t.date?new Date(t.date).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}):''},items);
+    };
+  });
 }
 (async()=>{
   logSession('Billing');
