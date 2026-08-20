@@ -506,6 +506,7 @@ $('#purSave').onclick=async()=>{
   const total=cost*qty;
   const po={productId:pid,productName:p.name,qty,cost,total,status,supplier:$('#purSupplier').value.trim(),ref:$('#purRef').value.trim(),notes:$('#purNotes').value.trim(),at:now.toISOString(),ist};
   await put('purchases',po);
+  try{const now=new Date();await put('finance',{type:'purchase',direction:'out',amount:+po.total||((+po.cost||0)*(+po.qty||0)),category:'purchase',note:'PO · '+(po.productName||''),at:now.toISOString(),ist:now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),source:'purchase'})}catch(e){}
   if(status==='received'){
     p.stock=(p.stock||0)+qty;
     if(cost>0)p.cost=cost;
@@ -736,6 +737,29 @@ async function bulkPrintBarcodes(){
 
 
 const INV_BLOCK_LABELS={logo:'Logo',store:'Store name',addr:'Address',phone:'Phone',gstin:'GSTIN',line:'Divider',inv:'Invoice # / date',customer:'Customer',pay:'Payment status',items:'Line items',totals:'Totals',footer:'Footer'};
+const INV_ALL=['logo','store','addr','phone','gstin','line','inv','customer','pay','items','totals','footer'];
+function _invBlk(id,inCanvas){return '<div class="inv-blk" draggable="true" data-id="'+id+'" style="padding:10px 12px;margin:4px 0;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:grab;display:flex;justify-content:space-between;align-items:center"><span>'+(INV_BLOCK_LABELS[id]||id)+'</span>'+(inCanvas?'<button type="button" data-rm="1" style="border:0;background:#fee2e2;color:var(--r);border-radius:6px;width:28px;height:28px;cursor:pointer">×</button>':'')+'</div>'}
+function _bindInvDnD(){
+  const pal=$('#invPalette'),can=$('#invCanvas');if(!pal||!can)return;
+  let drag=null,from=null;
+  function bind(el,src){
+    el.ondragstart=e=>{drag=el.dataset.id;from=src;el.style.opacity=.5;e.dataTransfer.effectAllowed='copyMove'};
+    el.ondragend=()=>{el.style.opacity=1;drag=null};
+  }
+  pal.querySelectorAll('.inv-blk').forEach(el=>bind(el,'pal'));
+  can.querySelectorAll('.inv-blk').forEach(el=>{
+    bind(el,'can');
+    el.ondragover=e=>e.preventDefault();
+    el.ondrop=e=>{e.preventDefault();e.stopPropagation();if(!drag)return;const nodes=[...can.querySelectorAll('.inv-blk')];const target=el;if(from==='can'){const d=can.querySelector('.inv-blk[data-id="'+drag+'"]');if(d&&d!==target){const ti=nodes.indexOf(target),di=nodes.indexOf(d);if(di<ti)target.after(d);else target.before(d)}}};
+    const rm=el.querySelector('[data-rm]');if(rm)rm.onclick=e=>{e.stopPropagation();el.remove()};
+  });
+  can.ondragover=e=>e.preventDefault();
+  can.ondrop=e=>{
+    e.preventDefault();if(!drag)return;
+    if(from==='pal'){if([...can.querySelectorAll('.inv-blk')].some(x=>x.dataset.id===drag&&drag!=='line')){/* allow line multi */}can.insertAdjacentHTML('beforeend',_invBlk(drag,true));_bindInvDnD()}
+    else if(from==='can'&&e.target===can){const d=can.querySelector('.inv-blk[data-id="'+drag+'"]');if(d)can.appendChild(d)}
+  };
+}
 function loadInvoice(){
   const b=getBrand();
   if($('#invStore'))$('#invStore').value=b.store||'';
@@ -745,23 +769,18 @@ function loadInvoice(){
   if($('#invFooter'))$('#invFooter').value=b.footer||'Thank you!';
   if($('#invPaper'))$('#invPaper').value=String(b.paper||80);
   if($('#invLogoPrev'))$('#invLogoPrev').innerHTML=b.logo?'<img src="'+b.logo+'" style="max-height:48px;border-radius:8px">':'';
-  const box=$('#invBlocks');if(!box)return;
-  const blocks=b.blocks||['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer'];
-  box.innerHTML=blocks.map((id,i)=>'<div class="inv-blk" draggable="true" data-id="'+id+'" style="padding:12px 14px;border-bottom:1px solid var(--bd);background:#fff;font-size:13px;font-weight:600;cursor:grab;display:flex;justify-content:space-between"><span>'+(INV_BLOCK_LABELS[id]||id)+'</span><span style="color:var(--m);font-weight:500">⋮⋮</span></div>').join('');
-  let drag=null;
-  box.querySelectorAll('.inv-blk').forEach(el=>{
-    el.ondragstart=()=>{drag=el;el.style.opacity=.5};
-    el.ondragend=()=>{el.style.opacity=1;drag=null};
-    el.ondragover=e=>e.preventDefault();
-    el.ondrop=e=>{e.preventDefault();if(!drag||drag===el)return;const all=[...box.querySelectorAll('.inv-blk')];const id=all.indexOf(el),jd=all.indexOf(drag);if(id<0||jd<0)return;if(jd<id)el.after(drag);else el.before(drag)};
-  });
+  const used=b.blocks||['store','inv','customer','items','totals','footer'];
+  if($('#invPalette'))$('#invPalette').innerHTML=INV_ALL.map(id=>_invBlk(id,false)).join('');
+  if($('#invCanvas'))$('#invCanvas').innerHTML=used.map(id=>_invBlk(id,true)).join('');
+  _bindInvDnD();
 }
 function saveInvoice(){
   let s={};try{s=JSON.parse(localStorage.getItem('atom_prefs')||'{}')}catch(e){}
   s.store=($('#invStore')?.value||'').trim()||s.store||'ATOM POS';
   s.phone=($('#invPhone')?.value||'').trim();s.addr=($('#invAddr')?.value||'').trim();
   s.gstin=($('#invGstin')?.value||'').trim();s.footer=($('#invFooter')?.value||'').trim()||'Thank you!';
-  s.paper=+($('#invPaper')?.value||80);s.blocks=[...$$('#invBlocks .inv-blk')].map(el=>el.dataset.id);
+  s.paper=+($('#invPaper')?.value||80);
+  s.blocks=[...$$('#invCanvas .inv-blk')].map(el=>el.dataset.id);
   if(window._invLogoData)s.logo=window._invLogoData;
   localStorage.setItem('atom_prefs',JSON.stringify(s));toast('Invoice design saved');
 }

@@ -132,7 +132,7 @@ async function show(r){
     }).join('')||'<div class="card"><p class="muted">No ledger lines yet</p></div>';
   }else if(r==='journal'){
     const je=[];
-    d.txs.filter(t=>(t.status||'')!=='return').forEach(t=>{je.push({at:t.date,n:'Dr Cash/Bank / Cr Sales · '+(t.title||'')+' · '+fmt(t.amount)})});
+    d.txs.forEach(t=>{const ret=(t.status||'')==='return'||/return/i.test(t.title||'');je.push({at:t.date,n:ret?('Dr Sales Return / Cr Cash · '+(t.title||'')+' · '+fmt(Math.abs(+t.amount||0))):('Dr Cash/Bank / Cr Sales · '+(t.title||'')+' · '+fmt(t.amount))})});
     d.purch.forEach(p=>{je.push({at:p.at,n:'Dr Purchases / Cr Creditor · '+(p.productName||'')+' · '+fmt(+p.total||0)})});
     d.fin.forEach(f=>{const cat=f.category||'payment';je.push({at:f.at,n:(f.direction==='in'?'Dr Cash / Cr '+cat:'Dr '+cat+' / Cr Cash')+' · '+fmt(f.amount)+' · '+(f.note||'')})});
     je.sort((a,b)=>(b.at||'').localeCompare(a.at||''));

@@ -377,7 +377,7 @@ async function runMore(a){
       const cat=$('#payCat').value,catLabel=($('#payCat').selectedOptions[0]||{}).text||cat;
       const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true});
       const partyId=+$('#payPartyId').value||null;let partyName='';
-      if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=Math.max(0,(+p.credit||0)+(dir==='in'?-amt:amt));await put('parties',p)}}
+      if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=(+p.credit||0)+(dir==='in'?-amt:amt);await put('parties',p)}}
       const note=($('#payNote').value.trim()||catLabel);
       await put('finance',{type:'payment',direction:dir,amount:amt,category:cat,partyId,partyName,note,at:now.toISOString(),ist,source:cat});
       if(dir==='in'){let left=amt;for(const tx of (await all('transactions')).filter(t=>t.status==='unpaid').sort((x,y)=>(x.date||'').localeCompare(y.date||''))){if(left<=0)break;if((+tx.amount||0)<=left){left-=+tx.amount;tx.status='paid';await put('transactions',tx)}}}
@@ -398,7 +398,7 @@ async function runMore(a){
       let total=0;const items=[];
       for(const l of _lines){const pr=await getById('products',l.id);if(!pr)continue;const qty=+l.qty||1;const unit=isSale?(+pr.price||0):(+pr.cost||+pr.price||0);total+=unit*qty;let mode=inv==='auto'?(isSale?'add':'deduct'):inv;if(mode==='add')pr.stock=(pr.stock||0)+qty;if(mode==='deduct')pr.stock=Math.max(0,(pr.stock||0)-qty);if(mode!=='none')await put('products',pr);items.push({id:l.id,name:pr.name,price:unit,qty})}
       if(partyId&&cred!=='none'){const pt=await getById('parties',partyId);if(pt){pt.credit=Math.max(0,(+pt.credit||0)+(cred==='add'?total:-total));await put('parties',pt)}}
-      await put('finance',{type:'payment',direction:isSale?'out':'in',amount:total,note:(isSale?'Sales':'Purchase')+' return',at:now.toISOString(),ist,source:'return',items});
+      await put('finance',{type:'return',direction:isSale?'out':'in',amount:total,category:isSale?'sales_return':'purchase_return',note:(isSale?'Sales':'Purchase')+' return',at:now.toISOString(),ist,source:isSale?'sales_return':'purchase_return',items});
       if(isSale){await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:items.length+' item(s)',amount:-total,status:'paid',date:now.toISOString(),icon:'cart',items});if(shiftOn())bumpShift('returns',total)}
       $('#actM').classList.remove('on');toast('Return recorded');try{await renderTx();await renderExStCounts()}catch(e){}
     };return;
@@ -434,13 +434,37 @@ $('#btnBil').onclick=()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#b
 $('#btnRec').onclick=async()=>{
   plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');
   const list=(await all('transactions')).filter(t=>t.status==='unpaid');
-  let html='<div class="af" style="margin-bottom:14px;padding:12px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0"><label style="color:#047857">Miscellaneous receive (₹)</label><input id="miscAmt" type="number" min="1" placeholder="Enter amount" style="margin-top:6px"><button class="save" id="miscSave" style="margin-top:10px;background:var(--g)">Record Received</button></div>';
-  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>`<div class="sheet-item" data-id="${t.id}"><div class="si">${productIcon({})}</div><div class="sn">${t.title}<small>${t.subtitle||''}</small></div><div class="sp">${fmt(t.amount)}</div></div>`).join(''):'<div class="empty" style="padding:16px 0">No unpaid invoices. Use the form above for misc receive.</div>';
+  const parties=(await all('parties')).filter(p=>(+p.credit||0)!==0).slice(0,20);
+  let html='<div class="af" style="margin-bottom:12px;padding:12px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0">'+
+    '<label style="color:#047857">Receive payment (₹)</label><input id="miscAmt" type="number" min="1" step="0.01" placeholder="Amount" style="margin-top:6px">'+
+    '<label style="margin-top:8px">Type of payment received</label><select id="miscCat"><option value="sales">Sales receipt</option><option value="capital">Capital / investment</option><option value="loan_in">Loan received</option><option value="other_inc">Other income</option><option value="other">Other</option></select>'+
+    '<label style="margin-top:8px">Search party</label><input id="miscPartyQ" placeholder="Customer / supplier" autocomplete="off"><div id="miscPartyPicks"></div><input type="hidden" id="miscPartyId" value="">'+
+    '<button class="save" id="miscSave" style="margin-top:10px;background:var(--g)">Record received</button></div>';
+  if(parties.length)html+='<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Party balances</div>'+parties.map(p=>'<div class="sheet-item" data-party="'+p.id+'"><div class="sn">'+esc(p.name)+'<small>'+(p.type||'')+' · bal '+fmt(p.credit)+'</small></div></div>').join('');
+  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>'<div class="sheet-item" data-id="'+t.id+'"><div class="sn">'+(t.title||'')+'<small>'+(t.subtitle||'')+'</small></div><div class="sp">'+fmt(t.amount)+'</div></div>').join(''):'<div class="empty" style="padding:12px 0">No unpaid invoices</div>';
   $('#sheetUpB').innerHTML=html;
-  $('#miscSave').onclick=async()=>{const amt=+$('#miscAmt').value;if(!amt||amt<=0)return toast('Enter a valid amount');await put('transactions',{id:crypto.randomUUID(),title:'Miscellaneous',subtitle:`Received • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:amt,status:'paid',date:new Date().toISOString(),icon:'cart'});toast('Received '+fmt(amt));closeSheets();renderTx()};
-  $$('#sheetUpB .sheet-item').forEach(el=>el.onclick=async()=>{const tx=list.find(t=>t.id===el.dataset.id);tx.status='paid';await put('transactions',tx);toast('Marked as received');closeSheets();renderTx()});
+  bindPartySearch('#miscPartyQ','#miscPartyPicks','#miscPartyId');
+  $('#miscSave').onclick=async()=>{
+    const amt=+$('#miscAmt').value;if(!(amt>0))return toast('Enter amount');
+    const cat=$('#miscCat').value,catL=($('#miscCat').selectedOptions[0]||{}).text||cat;
+    const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+    const partyId=+$('#miscPartyId').value||null;let partyName='';
+    if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=(+p.credit||0)-amt;await put('parties',p)}}
+    await put('finance',{type:'payment',direction:'in',amount:amt,category:cat,partyId,partyName,note:catL,at:now.toISOString(),ist,source:cat});
+    if(shiftOn())bumpShift('cash',amt);
+    toast('Received '+fmt(amt));closeSheets();renderTx();
+  };
+  $$('#sheetUpB .sheet-item[data-id]').forEach(el=>el.onclick=async()=>{
+    const tx=list.find(t=>t.id===el.dataset.id);if(!tx)return;tx.status='paid';await put('transactions',tx);
+    const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+    await put('finance',{type:'payment',direction:'in',amount:+tx.amount||0,category:'sales',partyId:tx.partyId||null,partyName:tx.title||'',note:'Invoice paid',at:now.toISOString(),ist,source:'sales',txId:tx.id});
+    if(tx.partyId){const p=await getById('parties',tx.partyId);if(p){p.credit=(+p.credit||0)-(+tx.amount||0);await put('parties',p)}}
+    if(shiftOn())bumpShift('cash',+tx.amount||0);
+    toast('Marked received');closeSheets();renderTx();
+  });
   openSheet('#sheetUnpaid');
 };
+
 
 $('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;
 $('#btnEx').onclick=async()=>{const list=(await all('products')).filter(p=>p.expiry).map(p=>({...p,d:daysLeft(p.expiry)})).filter(p=>p.d<=7).sort((a,b)=>a.d-b.d);$('#sheetExB').innerHTML=list.length?list.map(p=>`<div class="sheet-item"><div class="si">${productIcon(p)}</div><div class="sn">${p.name}<small>${p.d<0?'Expired '+Math.abs(p.d)+'d ago':p.d===0?'Expires today':'Expires in '+p.d+'d'}</small></div><div class="sp">${fmt(p.price)}</div></div>`).join(''):'<div class="empty">No products expiring soon</div>';openSheet('#sheetEx')};
@@ -723,7 +747,7 @@ if($('#invP80'))$('#invP80').onclick=()=>printInvoice(80);
 if($('#invX'))$('#invX').onclick=()=>{$('#invM').classList.remove('on')};
 if($('#invSkip'))$('#invSkip').onclick=()=>{$('#invM').classList.remove('on')};
 
-$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}const invItems=cart.map(c=>({name:c.name,price:c.price,qty:c.qty}));const invMeta={invNo,total,sub,disc,customer:name||'Walk-in',status:payStatus,payMethod:payStatus==='paid'?payMethod:null,dateStr:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})};cart=[];renderCartBar();$('#coM').classList.remove('on');if(shiftOn()&&payStatus==='paid'){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();try{await askNotify()}catch(e){}checkStockAlerts();showView('home');try{closeShell()}catch(e){}offerInvoice(invMeta,invItems)};
+$('#coSave').onclick=async()=>{if(!cart.length)return;const total=cartTotal(),disc=cartDiscount(),sub=cartSub();let name=$('#coName').value.trim(),partyId=+$('#coPartyId').value||null;if(name&&!partyId){const exist=(await all('parties')).find(p=>(p.name||'').toLowerCase()===name.toLowerCase());if(exist)partyId=exist.id;else partyId=await put('parties',{name,phone:'',type:'customer',credit:0})}const list=await all('transactions'),invNo=1233+list.length+1;await put('transactions',{id:crypto.randomUUID(),title:name||'Cash Sale',partyId,subtitle:`Invoice #${invNo} • ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}`,amount:total,discount:disc,subtotal:sub,status:payStatus,payMethod:payStatus==='paid'?payMethod:null,date:new Date().toISOString(),icon:name?'person':'cart',items:cart.map(c=>({id:c.id,variantId:c.variantId||null,name:c.name,price:c.price,qty:c.qty}))});if(payStatus==='unpaid'&&partyId){const pt=await getById('parties',partyId);if(pt){pt.credit=(+pt.credit||0)+total;await put('parties',pt)}}const products=await all('products');const variants=await all('variants');for(const c of cart){if(c.variantId){const v=variants.find(x=>+x.id===+c.variantId);if(v){v.stock=Math.max(0,(v.stock||0)-c.qty);await put('variants',v)}}const p=products.find(x=>+x.id===+c.id);if(p){p.stock=Math.max(0,(p.stock||0)-c.qty);await put('products',p)}}const invItems=cart.map(c=>({name:c.name,price:c.price,qty:c.qty}));const invMeta={invNo,total,sub,disc,customer:name||'Walk-in',status:payStatus,payMethod:payStatus==='paid'?payMethod:null,dateStr:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})};cart=[];renderCartBar();$('#coM').classList.remove('on');if(payStatus==='paid'){const now2=new Date();await put('finance',{type:'sale',direction:'in',amount:total,category:'sales',partyId,partyName:name||'',note:'Sale #'+invNo,at:now2.toISOString(),ist:now2.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),source:'sales'});if(shiftOn()){bumpShift('sales',total);bumpShift(payMethod||'cash',total)}}toast('Sale recorded');notify('ATOM · Sale','Invoice recorded · '+fmt(total)+(payStatus==='unpaid'?' (unpaid)':''));await renderTx();await renderExStCounts();try{await askNotify()}catch(e){}checkStockAlerts();showView('home');try{closeShell()}catch(e){}offerInvoice(invMeta,invItems)};
 $('#btnHold').onclick=async()=>{if(!cart.length)return;await put('held',{items:cart,total:cart.reduce((a,c)=>a+c.qty*c.price,0),date:new Date().toISOString()});cart=[];renderCartBar();toast('Bill held');if($('#v-held').classList.contains('on'))renderHeld()};
 $('#btnClear').onclick=async()=>{if(!cart.length)return;if(!(await appConfirm('Clear','Clear all items from cart?','Clear',true)))return;cart=[];renderCartBar();toast('Cart cleared')};
 
