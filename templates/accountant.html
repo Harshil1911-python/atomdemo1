@@ -4,9 +4,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
 <link rel="stylesheet" href="/static/common.css">
 <title>ATOM Accountant</title>
 <style>
+body.acc-home .app,.acc-home .col,.acc-home .rep{background:#000!important}
+.acc-home .vhead{display:none!important}
+.acc-home .top{background:transparent!important;border:0!important;box-shadow:none!important}
+.acc-home .top .logo{display:none!important}
+.acc-home .top .ib{color:#fff!important;border-color:rgba(255,255,255,.25)!important}
 .rep{padding:0 16px 28px}.card{background:#fff;border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:10px}
 .card h3{font-size:13px;font-weight:800;margin-bottom:10px}
 .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;font-size:13px;border-bottom:1px solid #f1f5f9}
@@ -33,6 +40,7 @@
 <script>
 document.addEventListener('contextmenu',e=>e.preventDefault());
 logSession('Accountant');
+const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
 $('#drawerBody').innerHTML=panelLinks('accountant')+
   '<button type="button" class="adm-drop" data-g="finrep">Financial reports'+chev+'</button>'+
@@ -86,11 +94,10 @@ async function show(r){
   if($('#accSub'))$('#accSub').textContent=t[1]||'';
   const el=$('#rep');if(!el)return;
   try{closeShell()}catch(e){}
+  document.body.classList.toggle('acc-home',r==='home');
   if(r==='home'){
-    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;min-height:55vh;text-align:center">'+
-      '<img src="/static/logo.png" alt="ATOM" style="width:96px;height:96px;object-fit:contain;margin-bottom:20px">'+
-      '<div style="font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.02em;line-height:1.35">WELCOME TO THE<br>ACCOUNTANT MODE</div>'+
-      '<p style="margin-top:14px;font-size:13px;color:var(--m);font-weight:500;max-width:260px">Open the menu for financial reports and books of accounts</p></div>';
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;background:#000">'+
+      '<img src="/static/logo-white.png" alt="ATOM" style="width:120px;height:120px;object-fit:contain"></div>';
     return;
   }
   let d;
@@ -135,3 +142,4 @@ show('home');
 </script>
 </body>
 </html>
+

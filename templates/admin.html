@@ -81,11 +81,13 @@
     <!-- Overview -->
     <div class="panel-view" id="viewProductInfo">
       <div class="sec-title" id="piTitle">Product info</div>
+      <input class="search" id="piSearch" placeholder="Search products…" style="width:100%;margin-bottom:12px;padding:11px 14px;border:1px solid var(--bd);border-radius:12px;font-size:14px;font-family:inherit">
       <div id="piList"><div class="empty">Loading…</div></div>
       <div id="piDetail" style="display:none"></div>
     </div>
     <div class="panel-view" id="viewProducts">
       <div class="sec-title">All products <span style="font-weight:500;color:var(--m);font-size:12px">(tap to edit)</span></div>
+      <input class="search" id="prodSearch" placeholder="Search products…" style="width:100%;margin-bottom:12px;padding:11px 14px;border:1px solid var(--bd);border-radius:12px;font-size:14px;font-family:inherit">
       <div class="plist" id="plist"><div class="empty">No products yet.</div></div>
     </div>
     <div class="panel-view on" id="viewMain">
@@ -270,6 +272,7 @@ Shampoo,120,10,Grocery,,890456,80,bottle,3,SHAM01,5,</code>
     <!-- Inventory -->
     <div class="panel-view" id="viewInventory">
       <div class="sec-title">Inventory Management</div>
+      <input class="search" id="invSearch" placeholder="Search inventory…" style="width:100%;margin-bottom:12px;padding:11px 14px;border:1px solid var(--bd);border-radius:12px;font-size:14px;font-family:inherit">
       <p style="font-size:13px;color:var(--m);margin-bottom:10px;font-weight:500">Adjust stock one-by-one or bulk edit below.</p>
       <div class="chip-row" id="invFilter">
         <button class="chip on" data-f="all">All</button>

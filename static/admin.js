@@ -109,8 +109,11 @@ async function refresh(){
   if($('#mostFast'))$('#mostFast').textContent=topF?(topF[0]+' · '+topF[1]+' units'):'No movement data yet';
   const box=$('#plist');
   if(box){
-    list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    box.innerHTML=list.map(p=>'<div class="pi" data-id="'+p.id+'"><div class="thumb">'+productIcon(p)+'</div><div class="info"><div class="name">'+esc(p.name)+'</div><div class="meta">'+(p.cat||'General')+' · Stock '+(p.stock||0)+'</div></div><div class="price">'+fmt(p.price)+'</div><button class="del" type="button">×</button></div>').join('')||'<div class="empty">No products</div>';
+    const qq=($('#prodSearch')&&$('#prodSearch').value||'').trim().toLowerCase();
+    let shown=list.slice();
+    if(qq)shown=shown.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)||String(p.sku||'').toLowerCase().includes(qq));
+    shown.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    box.innerHTML=shown.map(p=>'<div class="pi" data-id="'+p.id+'"><div class="thumb">'+productIcon(p)+'</div><div class="info"><div class="name">'+esc(p.name)+'</div><div class="meta">'+(p.cat||'General')+' · Stock '+(p.stock||0)+'</div></div><div class="price">'+fmt(p.price)+'</div><button class="del" type="button">×</button></div>').join('')||'<div class="empty">No products</div>';
     $$('.pi .del').forEach(b=>b.onclick=async e=>{e.stopPropagation();if(!(await appConfirm('Delete','Delete this product?','Delete',true)))return;await del('products',+b.closest('.pi').dataset.id);toast('Deleted');refresh()});
     $$('.pi').forEach(row=>{row.onclick=e=>{if(e.target.closest('.del'))return;const id=+row.dataset.id;const prod=list.find(x=>+x.id===id);if(prod)openProductModal(prod)}});
   }
@@ -397,6 +400,8 @@ async function renderInventory(){
   let list=await all('products');
   if(invFilter==='out')list=list.filter(p=>(p.stock||0)<=0);
   else if(invFilter==='low')list=list.filter(p=>{const min=p.minStock||0;return min>0?(p.stock||0)<=min:(p.stock||0)<=5});
+  const qq=($('#invSearch')&&$('#invSearch').value||'').trim().toLowerCase();
+  if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)||String(p.sku||'').toLowerCase().includes(qq));
   list.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const box=$('#invList');
   if(!list.length){box.innerHTML='<div class="empty">No products match.</div>';return}
@@ -591,7 +596,9 @@ async function renderProductInfo(){
   const listBox=$('#piList'),det=$('#piDetail');if(!listBox)return;
   det.style.display='none';listBox.style.display='block';
   if($('#piTitle'))$('#piTitle').textContent='Product info';
-  const list=(await all('products')).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const qq=($('#piSearch')&&$('#piSearch').value||'').trim().toLowerCase();
+  let list=(await all('products')).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(qq)list=list.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq)||String(p.sku||'').toLowerCase().includes(qq));
   if(!list.length){listBox.innerHTML='<div class="empty">No products.</div>';return}
   listBox.innerHTML=list.map(p=>'<div class="pi-card" data-id="'+p.id+'"><div style="display:flex;justify-content:space-between;gap:10px"><div><div class="pn">'+esc(p.name)+'</div><div class="tm">'+(p.cat||'General')+' · Stock '+(p.stock||0)+'</div></div><div class="pn">'+fmt(p.price)+'</div></div></div>').join('');
   $$('#piList .pi-card').forEach(c=>c.onclick=()=>showProductInfo(+c.dataset.id));
@@ -601,6 +608,7 @@ async function showProductInfo(id){
   const listBox=$('#piList'),det=$('#piDetail');
   listBox.style.display='none';det.style.display='block';
   if($('#piTitle'))$('#piTitle').textContent=p.name;
+  const code=(String(p.barcode||'').split(/[,;|]/)[0]||'').trim()||p.sku||'';
   const rows=[
     ['Name',p.name],['Category',p.cat||'General'],['Brand',p.brand||'—'],['SKU',p.sku||'—'],['Barcode',p.barcode||'—'],
     ['HSN/SAC',p.hsn||'—'],['Unit',p.unit||'pcs'],['Sell price',fmt(p.price)],['Cost',fmt(p.cost||0)],
@@ -608,10 +616,19 @@ async function showProductInfo(id){
     ['Tax %',String(p.taxPct||0)],['Tax inclusive',p.taxInclusive?'Yes':'No'],['Supplier',p.supplier||'—'],
     ['Expiry',p.expiry||'—'],['Description',p.desc||p.description||'—']
   ];
+  let codesHtml='';
+  if(code){
+    codesHtml='<div style="text-align:center;margin:12px 0 16px;padding:12px;background:#f8fafc;border-radius:12px;border:1px solid var(--bd)">'+
+      '<canvas id="piBcCanvas" width="240" height="80" style="max-width:100%;display:block;margin:0 auto 10px"></canvas>'+
+      '<img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data='+encodeURIComponent(code)+'" alt="QR" width="140" height="140" style="display:block;margin:0 auto;border-radius:8px">'+
+      '<div style="font-family:ui-monospace;font-size:12px;margin-top:8px;font-weight:700">'+esc(code)+'</div></div>';
+  }
   det.innerHTML=(p.photo?'<img class="thumb" src="'+p.photo+'" alt="">':'')+
     '<button type="button" class="btn" id="piBack" style="margin-bottom:12px">← Back to list</button>'+
+    codesHtml+
     rows.map(r=>'<div class="row"><span>'+r[0]+'</span><b>'+esc(String(r[1]))+'</b></div>').join('');
   $('#piBack').onclick=()=>renderProductInfo();
+  if(code&&$('#piBcCanvas')){try{_drawBc($('#piBcCanvas'),code)}catch(e){}}
 }
 
 async function renderSales(){
@@ -634,6 +651,15 @@ async function renderSales(){
     return '<div class="sess-item"><div><div class="pn">'+esc(t.title||'Sale')+'</div><div class="tm">'+esc(t.subtitle||'')+' · '+when+(t.status==='unpaid'?' · Unpaid':'')+'</div></div><div class="pn" style="color:'+(a<0?'var(--r)':(t.status==='unpaid'?'var(--m)':'var(--g)'))+'">'+fmt(a)+'</div></div>';
   }).join('');
 }
+
+if($('#btnAddCustomer'))$('#btnAddCustomer').onclick=async()=>{
+  const name=prompt('Customer name');
+  if(!name||!name.trim())return;
+  const phone=prompt('Phone (optional)')||'';
+  await put('parties',{name:name.trim(),phone:phone.trim(),type:'customer',credit:0});
+  toast('Customer added');
+  renderCustomers();
+};
 async function renderCustomers(){
   const box=$('#custList');if(!box)return;
   const list=(await all('parties')).filter(p=>(p.type||'customer')!=='supplier').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
@@ -958,3 +984,9 @@ if($('#pScanBc'))$('#pScanBc').onclick=async()=>{
     renderInventory();refresh();
   };
 })();
+
+/* search bars */
+if($('#prodSearch'))$('#prodSearch').oninput=()=>refresh();
+if($('#invSearch'))$('#invSearch').oninput=()=>renderInventory();
+if($('#piSearch'))$('#piSearch').oninput=()=>renderProductInfo();
+
