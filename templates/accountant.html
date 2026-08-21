@@ -25,8 +25,8 @@
 <div class="ov" id="ov"></div>
 <aside class="dr" id="dr"><div class="dh"><div class="dh-text"><h1>ATOM POS</h1><p>Advance Transactions &amp; Operations Management</p></div><img class="dh-logo" src="/static/logo-white.png" alt="ATOM"></div><div class="db" id="drawerBody"></div></aside>
 <div class="col">
-  <div class="vhead"><h2 id="accTitle">Accountant</h2><p id="accSub">Financial reports &amp; books</p></div>
-  <div class="rep" id="rep"><p class="muted">Open menu → Financial reports or Books of accounts</p></div>
+  <div class="vhead"><h2 id="accTitle">Accountant</h2><p id="accSub">Welcome</p></div>
+  <div class="rep" id="rep"></div>
 </div>
 </div>
 <script src="/static/common.js"></script>
@@ -34,113 +34,104 @@
 document.addEventListener('contextmenu',e=>e.preventDefault());
 logSession('Accountant');
 const chev='<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
-$('#drawerBody').innerHTML=
-  panelLinks('accountant')+
+$('#drawerBody').innerHTML=panelLinks('accountant')+
   '<button type="button" class="adm-drop" data-g="finrep">Financial reports'+chev+'</button>'+
-  '<div class="adm-sub" id="sub-finrep">'+
-  '<button type="button" data-r="trading">Trading account</button>'+
-  '<button type="button" data-r="pl">P&amp;L account</button>'+
-  '<button type="button" data-r="sopl">Statement of P&amp;L</button>'+
-  '<button type="button" data-r="bs">Balance sheet</button></div>'+
+  '<div class="adm-sub" id="sub-finrep"><button type="button" data-r="trading">Trading account</button><button type="button" data-r="pl">P&amp;L account</button><button type="button" data-r="sopl">Statement of P&amp;L</button><button type="button" data-r="bs">Balance sheet</button></div>'+
   '<button type="button" class="adm-drop" data-g="books">Books of accounts'+chev+'</button>'+
-  '<div class="adm-sub" id="sub-books">'+
-  '<button type="button" data-r="pb">Purchase book</button>'+
-  '<button type="button" data-r="sb">Sales book</button>'+
-  '<button type="button" data-r="prb">Purchase return book</button>'+
-  '<button type="button" data-r="srb">Sales return book</button>'+
-  '<button type="button" data-r="cb">Cash book</button>'+
-  '<button type="button" data-r="ledger">Ledger</button>'+
-  '<button type="button" data-r="journal">Journal entries</button></div>';
+  '<div class="adm-sub" id="sub-books"><button type="button" data-r="pb">Purchase book</button><button type="button" data-r="sb">Sales book</button><button type="button" data-r="prb">Purchase return book</button><button type="button" data-r="srb">Sales return book</button><button type="button" data-r="ledger">Ledger</button></div>';
 initShell();
-const titles={trading:['Trading account','Gross stage'],pl:['P&L account','Net results'],sopl:['Statement of P&L','Full statement'],bs:['Balance sheet','Position'],pb:['Purchase book','Purchases'],sb:['Sales book','Sales'],prb:['Purchase returns','Returns out'],srb:['Sales returns','Returns in'],cb:['Cash book','Cash movements'],ledger:['Ledger','By account'],journal:['Journal entries','Auto entries']};
-function rows(pairs){return pairs.map(([k,v])=>'<div class="row"><span>'+k+'</span><b>'+fmt(v)+'</b></div>').join('')}
-function tbl(headers,body){return '<table class="tbl"><thead><tr>'+headers.map((h,i)=>'<th'+(i?' class="r"':'')+'>'+h+'</th>').join('')+'</tr></thead><tbody>'+body+'</tbody></table>'}
-async function data(){
+
+const titles={home:['Accountant','Welcome'],trading:['Trading account','Gross'],pl:['P&L account','Net'],sopl:['Statement of P&L','Full'],bs:['Balance sheet','Position'],pb:['Purchase book','Purchases'],sb:['Sales book','Sales'],prb:['Purchase return book','Returns'],srb:['Sales return book','Returns'],ledger:['Ledger','Accounts']};
+const indDate=d=>{if(!d)return '—';try{return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'2-digit',year:'numeric'})}catch(e){return String(d).slice(0,10)}};
+const invNo=t=>{const m=String(t.subtitle||t.note||'').match(/#?\d{3,}/);return m?m[0].replace('#',''):(t.id?String(t.id).slice(-6):'—')};
+const emptyRow=n=>'<tr><td colspan="'+n+'" style="text-align:center;color:var(--m);padding:18px">No entries yet</td></tr>';
+const rows=p=>p.map(([k,v])=>'<div class="row"><span>'+k+'</span><b>'+fmt(v)+'</b></div>').join('');
+const tbl=(h,b)=>'<div style="overflow-x:auto"><table class="tbl"><thead><tr>'+h.map((x,i)=>'<th'+(i?' class="r"':'')+'>'+x+'</th>').join('')+'</tr></thead><tbody>'+b+'</tbody></table></div>';
+const isRet=t=>{const bk=t.book||'',ti=t.title||'',st=t.status||'';return st==='return'||bk==='sales_return'||bk==='purchase_return'||/^sales return/i.test(ti)||/^purchase return/i.test(ti)};
+const isPurRet=t=>(t.book==='purchase_return')||/^purchase return/i.test(t.title||'');
+const isSaleRet=t=>isRet(t)&&!isPurRet(t);
+
+async function loadData(){
   await openDB();
-  const txs=await all('transactions'),purch=await all('purchases'),fin=await all('finance'),prods=await all('products');
-  const sales=txs.filter(t=>(t.status||'')!=='return').reduce((s,t)=>s+(+t.amount||0),0);
-  const paidSales=txs.filter(t=>(t.status||'')==='paid').reduce((s,t)=>s+(+t.amount||0),0);
-  const unpaid=txs.filter(t=>(t.status||'')==='unpaid').reduce((s,t)=>s+(+t.amount||0),0);
-  const returns=txs.filter(t=>(t.status||'')==='return'||/return/i.test(t.title||'')).reduce((s,t)=>s+Math.abs(+t.amount||0),0);
-  const cogs=purch.reduce((s,p)=>s+(+p.total||((+p.cost||0)*(+p.qty||0))),0);
-  const byCat=(dir,cats)=>fin.filter(f=>(f.direction||'')===(dir==='in'?'in':'out')&&(!cats||cats.includes(f.category||f.source||''))).reduce((s,f)=>s+(+f.amount||0),0);
-  const opEx=byCat('out',['operating','salary','rent','utilities','transport','other_exp']);
-  const drawings=byCat('out',['drawings']);
-  const otherExp=byCat('out',['other','loan','purchase']);
-  const finIn=fin.filter(f=>(f.direction||'')==='in').reduce((s,f)=>s+(+f.amount||0),0);
-  const finOut=fin.filter(f=>(f.direction||'')!=='in').reduce((s,f)=>s+(+f.amount||0),0);
-  const capital=byCat('in',['capital']);
-  const otherInc=byCat('in',['other_inc','other','loan_in']);
+  let txs=[],purch=[],fin=[],prods=[];
+  try{txs=await all('transactions')||[]}catch(e){}
+  try{purch=await all('purchases')||[]}catch(e){}
+  try{fin=await all('finance')||[]}catch(e){}
+  try{prods=await all('products')||[]}catch(e){}
+  txs=txs.map(t=>({...t,amount:Math.abs(+t.amount||0),date:t.date||t.at||''}));
+  purch=purch.map(p=>({...p,total:Math.abs(+p.total||((+p.cost||0)*(+p.qty||0))),at:p.at||p.date||''}));
+  fin=fin.map(f=>({...f,amount:Math.abs(+f.amount||0),at:f.at||f.date||'',direction:(f.direction==='in'||f.dir==='in')?'in':'out',category:f.category||f.source||f.type||'other'}));
+  const sales=txs.filter(t=>!isRet(t)).reduce((s,t)=>s+t.amount,0);
+  const unpaid=txs.filter(t=>(t.status||'')==='unpaid').reduce((s,t)=>s+t.amount,0);
+  const returns=txs.filter(isRet).reduce((s,t)=>s+t.amount,0);
+  const cogs=purch.reduce((s,p)=>s+p.total,0);
+  const finIn=fin.filter(f=>f.direction==='in').reduce((s,f)=>s+f.amount,0);
+  const finOut=fin.filter(f=>f.direction==='out').reduce((s,f)=>s+f.amount,0);
+  const drawings=fin.filter(f=>f.category==='drawings').reduce((s,f)=>s+f.amount,0);
+  const opEx=fin.filter(f=>f.direction==='out'&&['operating','salary','rent','utilities','transport','other_exp'].includes(f.category)).reduce((s,f)=>s+f.amount,0);
+  const otherInc=fin.filter(f=>f.direction==='in'&&f.category!=='sales').reduce((s,f)=>s+f.amount,0);
+  const capital=fin.filter(f=>f.category==='capital').reduce((s,f)=>s+f.amount,0);
   const inv=prods.reduce((s,p)=>s+(+p.stock||0)*(+p.cost||0),0);
-  const payables=purch.filter(p=>(p.status||'')==='ordered').reduce((s,p)=>s+(+p.total||0),0);
-  const gross=sales-returns-cogs,net=gross+finIn-finOut;
-  const cash=Math.max(0,paidSales+finIn-finOut-drawings);
-  return{txs,purch,fin,sales,paidSales,unpaid,returns,cogs,opEx,drawings,otherExp,finIn,finOut,capital,otherInc,inv,payables,gross,net,cash};
+  const payables=purch.filter(p=>/order|pending/i.test(p.status||'')).reduce((s,p)=>s+p.total,0);
+  const paidSales=txs.filter(t=>!isRet(t)&&(t.status||'')!=='unpaid').reduce((s,t)=>s+t.amount,0);
+  const gross=sales-returns-cogs,net=gross+otherInc-opEx-Math.max(0,finOut-drawings-opEx);
+  const cash=Math.max(0,paidSales+finIn-finOut);
+  return{txs,purch,fin,sales,paidSales,unpaid,returns,cogs,opEx,drawings,finIn,finOut,capital,otherInc,inv,payables,gross,net,cash};
 }
+
 async function show(r){
-  closeShell();
-  const t=titles[r]||['Report',''];$('#accTitle').textContent=t[0];$('#accSub').textContent=t[1];
-  const d=await data();const el=$('#rep');
-  if(r==='trading'){
-    el.innerHTML='<p class="muted">From sales, returns &amp; purchases</p><div class="card"><h3>Trading account</h3>'+
-      rows([['Sales',d.sales],['Less: Sales returns',d.returns],['Net sales',d.sales-d.returns],['Purchases / COGS',d.cogs]])+
-      '<div class="row tot"><span>Gross profit / (loss)</span><b>'+fmt(d.gross)+'</b></div></div>';
-  }else if(r==='pl'){
-    el.innerHTML='<p class="muted">Linked to sales, purchases &amp; payment types</p><div class="card"><h3>Profit &amp; Loss A/C</h3>'+
-      rows([['Gross profit (trading)',d.gross],['Other income',d.otherInc+d.capital],['Operating expenses',d.opEx],['Drawings (not P&L)',0],['Other expenses',d.otherExp]])+
-      '<div class="row tot"><span>Net profit / (loss)</span><b>'+fmt(d.gross+d.otherInc-d.opEx-d.otherExp)+'</b></div></div>';
-  }else if(r==='sopl'){
-    const exp=d.opEx+d.otherExp,inc=d.sales-d.returns+d.otherInc;
-    el.innerHTML='<p class="muted">Statement form</p><div class="card"><h3>Statement of Profit &amp; Loss</h3>'+
-      rows([['Revenue from operations',d.sales-d.returns],['Other income',d.otherInc],['Total income',inc],['Cost of purchases',d.cogs],['Operating expenses',d.opEx],['Other expenses',d.otherExp],['Total expenses',d.cogs+exp]])+
-      '<div class="row tot"><span>Profit for the period</span><b>'+fmt(inc-d.cogs-exp)+'</b></div></div>';
-  }else if(r==='bs'){
-    const eq=d.capital+(d.gross+d.otherInc-d.opEx-d.otherExp)-d.drawings;
-    const assets=d.cash+d.inv+d.unpaid,liab=d.payables;
-    el.innerHTML='<p class="muted">Assets = liabilities + equity</p><div class="card"><h3>Assets</h3>'+
-      rows([['Cash &amp; bank (est.)',d.cash],['Inventory',d.inv],['Receivables',d.unpaid]])+
-      '<div class="row tot"><span>Total assets</span><b>'+fmt(assets)+'</b></div></div>'+
-      '<div class="card"><h3>Liabilities &amp; equity</h3>'+
-      rows([['Payables',d.payables],['Capital (net of drawings)',eq]])+
-      '<div class="row tot"><span>Total</span><b>'+fmt(liab+eq)+'</b></div></div>';
-  }else if(r==='pb'){
-    const body=d.purch.slice().sort((a,b)=>(b.at||'').localeCompare(a.at||'')).slice(0,100).map(p=>'<tr><td>'+(p.ist||(p.at||'').slice(0,10))+'</td><td>'+esc(p.productName||'')+'</td><td class="r">'+fmt(+p.total||((+p.cost||0)*(+p.qty||0)))+'</td></tr>').join('')||'<tr><td colspan="3">No purchases</td></tr>';
-    el.innerHTML='<div class="card">'+tbl(['Date','Particulars','Amount'],body)+'</div>';
-  }else if(r==='sb'){
-    const body=d.txs.filter(t=>(t.status||'')!=='return').slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,100).map(t=>'<tr><td>'+(t.date||'').slice(0,10)+'</td><td>'+esc(t.title||'Sale')+'</td><td class="r">'+fmt(t.amount)+'</td></tr>').join('')||'<tr><td colspan="3">No sales</td></tr>';
-    el.innerHTML='<div class="card">'+tbl(['Date','Particulars','Amount'],body)+'</div>';
-  }else if(r==='prb'||r==='srb'){
-    const sale=r==='srb';
-    const body=d.txs.filter(t=>(t.status||'')==='return'||/return/i.test(t.title||'')||/return/i.test(t.subtitle||'')).filter(t=>sale?!/purchase/i.test(t.title||''):/purchase/i.test(t.title||'')||true).slice(0,80).map(t=>'<tr><td>'+(t.date||'').slice(0,10)+'</td><td>'+esc(t.title||'')+'</td><td class="r">'+fmt(Math.abs(+t.amount||0))+'</td></tr>').join('')||'<tr><td colspan="3">No entries</td></tr>';
-    el.innerHTML='<div class="card">'+tbl(['Date','Particulars','Amount'],body)+'</div>';
-  }else if(r==='cb'){
-    const lines=[];
-    d.fin.forEach(f=>lines.push({at:f.at,ist:f.ist,note:(f.direction==='in'?'In: ':'Out: ')+(f.category||'')+' '+(f.note||''),dir:f.direction,amt:+f.amount||0}));
-    d.txs.filter(t=>(t.status||'')==='paid').forEach(t=>lines.push({at:t.date,ist:'',note:'Sale · '+(t.title||''),dir:'in',amt:+t.amount||0}));
-    lines.sort((a,b)=>(b.at||'').localeCompare(a.at||''));
-    const body=lines.slice(0,120).map(l=>'<tr><td>'+(l.ist||(l.at||'').slice(0,16))+'</td><td>'+esc(l.note)+'</td><td class="r">'+(l.dir==='in'?'+':'-')+fmt(l.amt)+'</td></tr>').join('')||'<tr><td colspan="3">Empty</td></tr>';
-    el.innerHTML='<div class="card">'+tbl(['Date','Particulars','Amount'],body)+'</div>';
-  }else if(r==='ledger'){
-    const map={};
-    const add=(name,dir,amt,note,at)=>{if(!map[name])map[name]=[];map[name].push({dir,amt,note,at})};
-    d.txs.forEach(t=>add(t.title||'Sales',(t.status==='return'?'out':'in'),Math.abs(+t.amount||0),t.subtitle||'',t.date));
-    d.fin.forEach(f=>add(f.partyName||f.category||f.note||'General',f.direction, +f.amount||0,f.note||'',f.at));
-    d.purch.forEach(p=>add(p.supplier||'Purchases','out',+p.total||0,p.productName||'',p.at));
-    el.innerHTML=Object.keys(map).slice(0,40).map(name=>{
-      const body=map[name].slice(0,30).map(x=>'<tr><td>'+(x.at||'').slice(0,10)+'</td><td>'+esc(x.note||'')+'</td><td class="r">'+(x.dir==='in'?'+':'-')+fmt(x.amt)+'</td></tr>').join('');
-      return '<div class="card"><h3>'+esc(name)+'</h3>'+tbl(['Date','Narration','Amount'],body)+'</div>';
-    }).join('')||'<div class="card"><p class="muted">No ledger lines yet</p></div>';
-  }else if(r==='journal'){
-    const je=[];
-    d.txs.forEach(t=>{const ret=(t.status||'')==='return'||/return/i.test(t.title||'');je.push({at:t.date,n:ret?('Dr Sales Return / Cr Cash · '+(t.title||'')+' · '+fmt(Math.abs(+t.amount||0))):('Dr Cash/Bank / Cr Sales · '+(t.title||'')+' · '+fmt(t.amount))})});
-    d.purch.forEach(p=>{je.push({at:p.at,n:'Dr Purchases / Cr Creditor · '+(p.productName||'')+' · '+fmt(+p.total||0)})});
-    d.fin.forEach(f=>{const cat=f.category||'payment';je.push({at:f.at,n:(f.direction==='in'?'Dr Cash / Cr '+cat:'Dr '+cat+' / Cr Cash')+' · '+fmt(f.amount)+' · '+(f.note||'')})});
-    je.sort((a,b)=>(b.at||'').localeCompare(a.at||''));
-    el.innerHTML='<div class="card">'+je.slice(0,150).map(j=>'<div class="row"><span>'+esc(j.n)+'</span><b style="color:var(--m);font-weight:500">'+(j.at||'').slice(0,10)+'</b></div>').join('')+'</div>';
+  r=r||'home';
+  const t=titles[r]||['Report',''];
+  if($('#accTitle'))$('#accTitle').textContent=t[0];
+  if($('#accSub'))$('#accSub').textContent=t[1]||'';
+  const el=$('#rep');if(!el)return;
+  try{closeShell()}catch(e){}
+  if(r==='home'){
+    el.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;min-height:55vh;text-align:center">'+
+      '<img src="/static/logo.png" alt="ATOM" style="width:96px;height:96px;object-fit:contain;margin-bottom:20px">'+
+      '<div style="font-size:18px;font-weight:800;color:#0f172a;letter-spacing:-.02em;line-height:1.35">WELCOME TO THE<br>ACCOUNTANT MODE</div>'+
+      '<p style="margin-top:14px;font-size:13px;color:var(--m);font-weight:500;max-width:260px">Open the menu for financial reports and books of accounts</p></div>';
+    return;
   }
+  let d;
+  try{d=await loadData()}catch(e){el.innerHTML='<div class="card"><p class="muted">Could not load data</p></div>';return}
+  if(r==='trading') el.innerHTML='<div class="card"><h3>Trading account</h3>'+rows([['Sales',d.sales],['Less: Returns',d.returns],['Net sales',d.sales-d.returns],['Purchases',d.cogs]])+'<div class="row tot"><span>Gross profit/(loss)</span><b>'+fmt(d.gross)+'</b></div></div>';
+  else if(r==='pl') el.innerHTML='<div class="card"><h3>P&amp;L account</h3>'+rows([['Gross profit',d.gross],['Other income',d.otherInc],['Operating expenses',d.opEx],['Other expenses',Math.max(0,d.finOut-d.drawings-d.opEx)]])+'<div class="row tot"><span>Net profit/(loss)</span><b>'+fmt(d.net)+'</b></div></div>';
+  else if(r==='sopl'){const inc=d.sales-d.returns+d.otherInc,exp=d.cogs+d.opEx+Math.max(0,d.finOut-d.drawings-d.opEx);el.innerHTML='<div class="card"><h3>Statement of P&amp;L</h3>'+rows([['Revenue',d.sales-d.returns],['Other income',d.otherInc],['Total income',inc],['Purchases',d.cogs],['Expenses',exp-d.cogs],['Total expenses',exp]])+'<div class="row tot"><span>Profit for period</span><b>'+fmt(inc-exp)+'</b></div></div>'}
+  else if(r==='bs'){const eq=d.capital+d.net-d.drawings,assets=d.cash+d.inv+d.unpaid;el.innerHTML='<div class="card"><h3>Assets</h3>'+rows([['Cash &amp; bank',d.cash],['Inventory',d.inv],['Receivables',d.unpaid]])+'<div class="row tot"><span>Total assets</span><b>'+fmt(assets)+'</b></div></div><div class="card"><h3>Liabilities &amp; equity</h3>'+rows([['Payables',d.payables],['Capital (net drawings)',eq]])+'<div class="row tot"><span>Total</span><b>'+fmt(d.payables+eq)+'</b></div></div>'}
+  else if(r==='sb'){
+    const L=d.txs.filter(t=>!isRet(t)).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const body=L.map((t,i)=>'<tr><td>'+(i+1)+'</td><td>'+indDate(t.date)+'</td><td>'+esc(invNo(t))+'</td><td>'+esc(t.title||'Cash Sale')+'</td><td class="r">'+fmt(t.amount)+'</td><td>'+esc(t.status==='unpaid'?'Credit':(t.payMethod||'Cash'))+'</td></tr>').join('')||emptyRow(6);
+    el.innerHTML='<p class="muted">'+L.length+' sale(s) from Billing</p><div class="card"><h3>Sales Book</h3>'+tbl(['S.No','Date','Invoice No','Party / Particulars','Amount (₹)','Mode'],body)+'<div class="row tot"><span>Total sales</span><b>'+fmt(L.reduce((s,t)=>s+t.amount,0))+'</b></div></div>';
+  }else if(r==='pb'){
+    const L=d.purch.slice().sort((a,b)=>(a.at||'').localeCompare(b.at||''));
+    const body=L.map((p,i)=>'<tr><td>'+(i+1)+'</td><td>'+indDate(p.at)+'</td><td>'+esc(p.id!=null?String(p.id):'—')+'</td><td>'+esc(p.supplier||p.productName||'Purchase')+'</td><td class="r">'+fmt(p.total)+'</td><td>'+esc(p.status||'—')+'</td></tr>').join('')||emptyRow(6);
+    el.innerHTML='<p class="muted">'+L.length+' purchase(s)</p><div class="card"><h3>Purchase Book</h3>'+tbl(['S.No','Date','Bill / PO No','Supplier / Particulars','Amount (₹)','Status'],body)+'<div class="row tot"><span>Total purchases</span><b>'+fmt(L.reduce((s,p)=>s+p.total,0))+'</b></div></div>';
+  }else if(r==='srb'){
+    const L=d.txs.filter(isSaleRet).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const body=L.map((t,i)=>'<tr><td>'+(i+1)+'</td><td>'+indDate(t.date)+'</td><td>'+esc(invNo(t))+'</td><td>'+esc(t.title||'Sales return')+'</td><td class="r">'+fmt(t.amount)+'</td></tr>').join('')||emptyRow(5);
+    el.innerHTML='<p class="muted">'+L.length+' return(s)</p><div class="card"><h3>Sales Return Book</h3>'+tbl(['S.No','Date','Ref No','Particulars','Amount (₹)'],body)+'<div class="row tot"><span>Total</span><b>'+fmt(L.reduce((s,t)=>s+t.amount,0))+'</b></div></div>';
+  }else if(r==='prb'){
+    const L=d.txs.filter(isPurRet).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+    const body=L.map((t,i)=>'<tr><td>'+(i+1)+'</td><td>'+indDate(t.date)+'</td><td>'+esc(invNo(t))+'</td><td>'+esc(t.title||'Purchase return')+'</td><td class="r">'+fmt(t.amount)+'</td></tr>').join('')||emptyRow(5);
+    el.innerHTML='<p class="muted">'+L.length+' return(s)</p><div class="card"><h3>Purchase Return Book</h3>'+tbl(['S.No','Date','Ref No','Particulars','Amount (₹)'],body)+'<div class="row tot"><span>Total</span><b>'+fmt(L.reduce((s,t)=>s+t.amount,0))+'</b></div></div>';
+  }else if(r==='ledger'){
+    const map={};const add=(n,dir,a,note,at)=>{n=n||'General';(map[n]=map[n]||[]).push({dir,a,note,at})};
+    d.txs.forEach(t=>add(t.title||'Sales',isRet(t)?'out':'in',t.amount,t.subtitle||'',t.date));
+    d.fin.forEach(f=>add(f.partyName||f.category||'Payment',f.direction,f.amount,f.note||'',f.at));
+    d.purch.forEach(p=>add(p.supplier||'Purchases','out',p.total,p.productName||'',p.at));
+    const keys=Object.keys(map);
+    el.innerHTML='<p class="muted">'+keys.length+' account(s)</p>'+(keys.slice(0,50).map(n=>{const body=map[n].slice(0,40).map(x=>'<tr><td>'+indDate(x.at)+'</td><td>'+esc(x.note||'')+'</td><td class="r">'+(x.dir==='in'?'+':'-')+fmt(x.a)+'</td></tr>').join('')||emptyRow(3);return '<div class="card"><h3>'+esc(n)+'</h3>'+tbl(['Date','Narration','Amount'],body)+'</div>'}).join('')||'<div class="card"><p class="muted">No ledger lines</p></div>');
+  }else el.innerHTML='<div class="card"><p class="muted">Unknown report</p></div>';
 }
-$$('.adm-sub button[data-r]').forEach(btn=>btn.onclick=()=>show(btn.dataset.r));
-show('pl');
+
+$('#drawerBody').addEventListener('click',function(e){
+  const btn=e.target.closest('button[data-r]');
+  if(!btn)return;
+  e.preventDefault();e.stopPropagation();
+  show(btn.dataset.r);
+});
+show('home');
 </script>
 </body>
 </html>

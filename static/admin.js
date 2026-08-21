@@ -736,51 +736,63 @@ async function bulkPrintBarcodes(){
 
 
 
-const INV_BLOCK_LABELS={logo:'Logo',store:'Store name',addr:'Address',phone:'Phone',gstin:'GSTIN',line:'Divider',inv:'Invoice # / date',customer:'Customer',pay:'Payment status',items:'Line items',totals:'Totals',footer:'Footer'};
-const INV_ALL=['logo','store','addr','phone','gstin','line','inv','customer','pay','items','totals','footer'];
-function _invBlk(id,inCanvas){return '<div class="inv-blk" draggable="true" data-id="'+id+'" style="padding:10px 12px;margin:4px 0;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:12px;font-weight:600;cursor:grab;display:flex;justify-content:space-between;align-items:center"><span>'+(INV_BLOCK_LABELS[id]||id)+'</span>'+(inCanvas?'<button type="button" data-rm="1" style="border:0;background:#fee2e2;color:var(--r);border-radius:6px;width:28px;height:28px;cursor:pointer">×</button>':'')+'</div>'}
-function _bindInvDnD(){
-  const pal=$('#invPalette'),can=$('#invCanvas');if(!pal||!can)return;
-  let drag=null,from=null;
-  function bind(el,src){
-    el.ondragstart=e=>{drag=el.dataset.id;from=src;el.style.opacity=.5;e.dataTransfer.effectAllowed='copyMove'};
-    el.ondragend=()=>{el.style.opacity=1;drag=null};
-  }
-  pal.querySelectorAll('.inv-blk').forEach(el=>bind(el,'pal'));
-  can.querySelectorAll('.inv-blk').forEach(el=>{
-    bind(el,'can');
-    el.ondragover=e=>e.preventDefault();
-    el.ondrop=e=>{e.preventDefault();e.stopPropagation();if(!drag)return;const nodes=[...can.querySelectorAll('.inv-blk')];const target=el;if(from==='can'){const d=can.querySelector('.inv-blk[data-id="'+drag+'"]');if(d&&d!==target){const ti=nodes.indexOf(target),di=nodes.indexOf(d);if(di<ti)target.after(d);else target.before(d)}}};
-    const rm=el.querySelector('[data-rm]');if(rm)rm.onclick=e=>{e.stopPropagation();el.remove()};
-  });
-  can.ondragover=e=>e.preventDefault();
-  can.ondrop=e=>{
-    e.preventDefault();if(!drag)return;
-    if(from==='pal'){if([...can.querySelectorAll('.inv-blk')].some(x=>x.dataset.id===drag&&drag!=='line')){/* allow line multi */}can.insertAdjacentHTML('beforeend',_invBlk(drag,true));_bindInvDnD()}
-    else if(from==='can'&&e.target===can){const d=can.querySelector('.inv-blk[data-id="'+drag+'"]');if(d)can.appendChild(d)}
+const INV_BLOCK_LABELS={logo:'Logo',store:'Store name',addr:'Address',phone:'Phone',gstin:'GSTIN',line:'Divider',inv:'Invoice #',customer:'Customer',pay:'Paid status',items:'Line items',totals:'Totals',footer:'Footer'};
+const INV_ALL=Object.keys(INV_BLOCK_LABELS);
+function _invPageSize(){const mm=+($('#invPaper')?.value||80);const w=mm===58?174:240;return{mm,w,h:Math.round(w*2.2)}}
+function _placeEl(id,x,y){
+  const el=document.createElement('div');
+  el.className='inv-el';el.dataset.id=id;
+  el.textContent=INV_BLOCK_LABELS[id]||id;
+  el.style.cssText='position:absolute;left:'+x+'%;top:'+y+'%;transform:translate(-50%,-50%);padding:6px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;font-size:11px;font-weight:700;cursor:grab;user-select:none;white-space:nowrap;z-index:2';
+  el.ondblclick=()=>el.remove();
+  let ox,oy,moving=0;
+  el.ontouchstart=el.onmousedown=e=>{
+    e.preventDefault();moving=1;const p=$('#invPage').getBoundingClientRect();
+    const pt=e.touches?e.touches[0]:e;ox=pt.clientX;oy=pt.clientY;
+    const move=ev=>{
+      if(!moving)return;const q=ev.touches?ev.touches[0]:ev;
+      let nx=((q.clientX-p.left)/p.width)*100,ny=((q.clientY-p.top)/p.height)*100;
+      nx=Math.max(5,Math.min(95,nx));ny=Math.max(5,Math.min(95,ny));
+      el.style.left=nx+'%';el.style.top=ny+'%';el.dataset.x=nx;el.dataset.y=ny;
+    };
+    const up=()=>{moving=0;window.removeEventListener('mousemove',move);window.removeEventListener('mouseup',up);window.removeEventListener('touchmove',move);window.removeEventListener('touchend',up)};
+    window.addEventListener('mousemove',move);window.addEventListener('mouseup',up);
+    window.addEventListener('touchmove',move,{passive:false});window.addEventListener('touchend',up);
   };
+  el.dataset.x=x;el.dataset.y=y;return el;
+}
+function _resizePage(){
+  const {w,h}=$('#invPaper')?_invPageSize():{w:240,h:528};const page=$('#invPage');if(!page)return;
+  page.style.width=w+'px';page.style.minHeight=h+'px';page.style.height=h+'px';
 }
 function loadInvoice(){
   const b=getBrand();
+  ['Store','Phone','Addr','Gstin','Footer'].forEach(k=>{const el=$('#inv'+k);if(el)el.value=b[k.toLowerCase()]||(k==='Footer'?'Thank you!':'')||(k==='Store'?b.store:'')});
   if($('#invStore'))$('#invStore').value=b.store||'';
   if($('#invPhone'))$('#invPhone').value=b.phone||'';
   if($('#invAddr'))$('#invAddr').value=b.addr||'';
   if($('#invGstin'))$('#invGstin').value=b.gstin||'';
   if($('#invFooter'))$('#invFooter').value=b.footer||'Thank you!';
-  if($('#invPaper'))$('#invPaper').value=String(b.paper||80);
+  if($('#invPaper')){$('#invPaper').value=String(b.paper||80);$('#invPaper').onchange=_resizePage}
   if($('#invLogoPrev'))$('#invLogoPrev').innerHTML=b.logo?'<img src="'+b.logo+'" style="max-height:48px;border-radius:8px">':'';
-  const used=b.blocks||['store','inv','customer','items','totals','footer'];
-  if($('#invPalette'))$('#invPalette').innerHTML=INV_ALL.map(id=>_invBlk(id,false)).join('');
-  if($('#invCanvas'))$('#invCanvas').innerHTML=used.map(id=>_invBlk(id,true)).join('');
-  _bindInvDnD();
+  _resizePage();
+  const page=$('#invPage');if(page){page.innerHTML='';const layout=b.layoutPos||[];
+    if(layout.length)layout.forEach(p=>page.appendChild(_placeEl(p.id,p.x,p.y)));
+    else{let y=12;['store','inv','customer','items','totals','footer'].forEach(id=>{page.appendChild(_placeEl(id,50,y));y+=12})}
+  }
+  if($('#invPalette')){
+    $('#invPalette').innerHTML=INV_ALL.map(id=>'<button type="button" class="btn" data-add="'+id+'" style="padding:6px 10px;font-size:11px">'+INV_BLOCK_LABELS[id]+'</button>').join('');
+    $$('#invPalette [data-add]').forEach(btn=>btn.onclick=()=>{$('#invPage').appendChild(_placeEl(btn.dataset.add,50,50))});
+  }
 }
 function saveInvoice(){
   let s={};try{s=JSON.parse(localStorage.getItem('atom_prefs')||'{}')}catch(e){}
-  s.store=($('#invStore')?.value||'').trim()||s.store||'ATOM POS';
+  s.store=($('#invStore')?.value||'').trim()||'ATOM POS';
   s.phone=($('#invPhone')?.value||'').trim();s.addr=($('#invAddr')?.value||'').trim();
   s.gstin=($('#invGstin')?.value||'').trim();s.footer=($('#invFooter')?.value||'').trim()||'Thank you!';
   s.paper=+($('#invPaper')?.value||80);
-  s.blocks=[...$$('#invCanvas .inv-blk')].map(el=>el.dataset.id);
+  s.layoutPos=[...$$('#invPage .inv-el')].map(el=>({id:el.dataset.id,x:+el.dataset.x||50,y:+el.dataset.y||50}));
+  s.blocks=s.layoutPos.map(p=>p.id);
   if(window._invLogoData)s.logo=window._invLogoData;
   localStorage.setItem('atom_prefs',JSON.stringify(s));toast('Invoice design saved');
 }

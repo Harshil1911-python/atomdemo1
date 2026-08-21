@@ -177,7 +177,7 @@ function logSession(panel){
 function getSessions(){try{return JSON.parse(localStorage.getItem('atom_sessions')||'[]')}catch(e){return[]}}
 
 
-function getBrand(){try{const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');return{store:s.store||'ATOM POS',phone:s.phone||'',addr:s.addr||'',gstin:s.gstin||'',gst:+(s.gst||0),footer:s.footer||'Thank you!',color:s.color||'#4f46e5',logo:s.logo||'',layout:s.layout||'classic',paper:+(s.paper||80),blocks:s.blocks||['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer']}}catch(e){return{store:'ATOM POS',phone:'',addr:'',gstin:'',gst:0,footer:'Thank you!',color:'#4f46e5',logo:'',layout:'classic',paper:80,blocks:['logo','store','addr','phone','gstin','line','inv','customer','pay','line','items','line','totals','footer']}}}
+function getBrand(){try{const s=JSON.parse(localStorage.getItem('atom_prefs')||'{}');return{store:s.store||'ATOM POS',phone:s.phone||'',addr:s.addr||'',gstin:s.gstin||'',gst:+(s.gst||0),footer:s.footer||'Thank you!',color:s.color||'#4f46e5',logo:s.logo||'',layout:s.layout||'classic',paper:+(s.paper||80),blocks:s.blocks||['store','inv','customer','items','totals','footer'],layoutPos:s.layoutPos||[]}}catch(e){return{store:'ATOM POS',phone:'',addr:'',gstin:'',gst:0,footer:'Thank you!',color:'#4f46e5',logo:'',layout:'classic',paper:80,blocks:['store','inv','customer','items','totals','footer'],layoutPos:[]}}}
 function invW(mm){return(+mm===58)?384:576}
 async function renderThermalPng(meta,items,mm){
   const b=getBrand();mm=+(mm||b.paper||80);const W=invW(mm),pad=Math.round(W*0.06);

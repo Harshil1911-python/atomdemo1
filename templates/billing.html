@@ -178,7 +178,7 @@
     <button class="go" id="btnCheckout">Checkout</button>
   </div>
   <div class="bar" id="fabWrap">
-    <button class="ab rec hid" id="btnRec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Received</button>
+    <button class="ab rec hid" id="btnScanFab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>Scan</button>
     <button class="ab pl" id="btnPlus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
     <button class="ab bil hid" id="btnBil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>+ Bill / Invoice</button>
   </div>
@@ -257,22 +257,27 @@
 </div></div></div>
 <div class="modal" id="actM"><div class="mbox"><div class="mhd"><span id="actTitle">Action</span> <button type="button" id="actX">×</button></div><div class="mbd" id="actBody"></div></div></div>
 
-<div class="modal" id="scanM"><div class="mbox" style="max-width:100%;width:100%;margin:0;border-radius:16px 16px 0 0;max-height:92vh;display:flex;flex-direction:column"><div class="mhd">Scan barcode / QR <button type="button" id="scanX">×</button></div><div class="mbd" style="padding:0;display:flex;flex-direction:column;min-height:0;flex:1">
-  <div style="position:relative;background:#000;width:100%;height:min(42vh,320px);overflow:hidden;flex-shrink:0">
+<div class="modal" id="scanM"><div class="mbox" style="max-width:100%;width:100%;margin:0;border-radius:16px 16px 0 0;height:92vh;max-height:92vh;display:flex;flex-direction:column"><div class="mhd">Scan · Text POS <button type="button" id="scanX">×</button></div><div class="mbd" style="padding:0;display:flex;flex-direction:column;min-height:0;flex:1;overflow:hidden">
+  <div style="position:relative;background:#000;width:100%;height:50%;min-height:180px;overflow:hidden;flex-shrink:0">
     <video id="scanVid" playsinline muted autoplay style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
-    <div style="position:absolute;left:50%;top:50%;width:72%;max-width:280px;aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:14px;box-shadow:0 0 0 9999px rgba(0,0,0,.4);pointer-events:none"></div>
+    <div style="position:absolute;left:50%;top:50%;width:70%;max-width:260px;aspect-ratio:1;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.35);pointer-events:none"></div>
+    <p id="scanHint" style="position:absolute;left:0;right:0;bottom:8px;margin:0;text-align:center;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 4px #000">Point at barcode</p>
   </div>
-  <div id="scanCart" style="padding:10px 14px;border-bottom:1px solid var(--bd);background:#f8fafc;flex-shrink:0">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px">
-      <span style="font-size:12px;font-weight:700;color:var(--m)" id="scanCartMeta">0 items · ₹0</span>
-      <span style="font-size:15px;font-weight:800;color:var(--p)" id="scanCartTotal">₹0</span>
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:#fff">
+    <div id="scanCart" style="flex:1;min-height:0;overflow:auto;padding:10px 12px;border-bottom:1px solid var(--bd)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:12px;font-weight:700;color:var(--m)" id="scanCartMeta">0 items</span>
+        <span style="font-size:16px;font-weight:800;color:var(--p)" id="scanCartTotal">₹0</span>
+      </div>
+      <div id="scanCartList" style="font-size:13px"></div>
     </div>
-    <div id="scanCartLast" style="font-size:12px;font-weight:600;color:var(--t);min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">No items yet</div>
-  </div>
-  <p id="scanHint" style="padding:10px 14px 6px;font-size:12px;color:var(--m);font-weight:600;text-align:center;margin:0">Point camera at barcode</p>
-  <div style="padding:0 14px 14px;display:flex;gap:8px;flex-shrink:0">
-    <input id="scanManual" placeholder="Or type barcode" style="flex:1;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit">
-    <button type="button" class="save" id="scanGo" style="padding:11px 16px;border:0;border-radius:10px;background:var(--p);color:#fff;font-weight:700;font-family:inherit">Go</button>
+    <div style="flex-shrink:0;padding:10px 12px 14px;background:#f8fafc">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <input id="scanManual" placeholder="Enter barcode manually" style="flex:1;padding:11px 12px;border:1px solid var(--bd);border-radius:10px;font-size:14px;font-family:inherit">
+        <button type="button" class="save" id="scanGo" style="padding:11px 14px;border:0;border-radius:10px;background:var(--p);color:#fff;font-weight:700;font-family:inherit">Add</button>
+      </div>
+      <button type="button" id="scanToCart" style="width:100%;padding:13px;border:0;border-radius:12px;background:#0f172a;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit">CHECKOUT</button>
+    </div>
   </div>
 </div></div></div>
 <div class="toast" id="toast"></div>
@@ -398,8 +403,9 @@ async function runMore(a){
       let total=0;const items=[];
       for(const l of _lines){const pr=await getById('products',l.id);if(!pr)continue;const qty=+l.qty||1;const unit=isSale?(+pr.price||0):(+pr.cost||+pr.price||0);total+=unit*qty;let mode=inv==='auto'?(isSale?'add':'deduct'):inv;if(mode==='add')pr.stock=(pr.stock||0)+qty;if(mode==='deduct')pr.stock=Math.max(0,(pr.stock||0)-qty);if(mode!=='none')await put('products',pr);items.push({id:l.id,name:pr.name,price:unit,qty})}
       if(partyId&&cred!=='none'){const pt=await getById('parties',partyId);if(pt){pt.credit=Math.max(0,(+pt.credit||0)+(cred==='add'?total:-total));await put('parties',pt)}}
-      await put('finance',{type:'return',direction:isSale?'out':'in',amount:total,category:isSale?'sales_return':'purchase_return',note:(isSale?'Sales':'Purchase')+' return',at:now.toISOString(),ist,source:isSale?'sales_return':'purchase_return',items});
-      if(isSale){await put('transactions',{id:crypto.randomUUID(),title:'Sales return',subtitle:items.length+' item(s)',amount:-total,status:'paid',date:now.toISOString(),icon:'cart',items});if(shiftOn())bumpShift('returns',total)}
+      await put('finance',{type:'return',direction:isSale?'out':'in',amount:total,category:isSale?'sales_return':'purchase_return',note:(isSale?'Sales':'Purchase')+' return',at:now.toISOString(),ist,source:isSale?'sales_return':'purchase_return',items,partyId});
+      await put('transactions',{id:crypto.randomUUID(),title:isSale?'Sales return':'Purchase return',subtitle:items.length+' item(s) · return',amount:isSale?-total:total,status:'return',book:isSale?'sales_return':'purchase_return',date:now.toISOString(),icon:'cart',items,partyId});
+      if(isSale&&shiftOn())bumpShift('returns',total);
       $('#actM').classList.remove('on');toast('Return recorded');try{await renderTx();await renderExStCounts()}catch(e){}
     };return;
   }
@@ -426,44 +432,10 @@ async function runMore(a){
 
 }
 
-$('#btnPlus').onclick=()=>{
-  if(plusOpen){plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');openMoreActions()}
-  else{plusOpen=true;$('#btnRec').classList.remove('hid');$('#btnBil').classList.remove('hid')}
-};
-$('#btnBil').onclick=()=>{plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');showView('photo')};
-$('#btnRec').onclick=async()=>{
-  plusOpen=false;$('#btnRec').classList.add('hid');$('#btnBil').classList.add('hid');
-  const list=(await all('transactions')).filter(t=>t.status==='unpaid');
-  const parties=(await all('parties')).filter(p=>(+p.credit||0)!==0).slice(0,20);
-  let html='<div class="af" style="margin-bottom:12px;padding:12px;background:#f0fdf4;border-radius:12px;border:1px solid #bbf7d0">'+
-    '<label style="color:#047857">Receive payment (₹)</label><input id="miscAmt" type="number" min="1" step="0.01" placeholder="Amount" style="margin-top:6px">'+
-    '<label style="margin-top:8px">Type of payment received</label><select id="miscCat"><option value="sales">Sales receipt</option><option value="capital">Capital / investment</option><option value="loan_in">Loan received</option><option value="other_inc">Other income</option><option value="other">Other</option></select>'+
-    '<label style="margin-top:8px">Search party</label><input id="miscPartyQ" placeholder="Customer / supplier" autocomplete="off"><div id="miscPartyPicks"></div><input type="hidden" id="miscPartyId" value="">'+
-    '<button class="save" id="miscSave" style="margin-top:10px;background:var(--g)">Record received</button></div>';
-  if(parties.length)html+='<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Party balances</div>'+parties.map(p=>'<div class="sheet-item" data-party="'+p.id+'"><div class="sn">'+esc(p.name)+'<small>'+(p.type||'')+' · bal '+fmt(p.credit)+'</small></div></div>').join('');
-  html+=list.length?'<div style="font-size:12px;font-weight:600;color:var(--m);margin:8px 0 6px">Unpaid invoices</div>'+list.map(t=>'<div class="sheet-item" data-id="'+t.id+'"><div class="sn">'+(t.title||'')+'<small>'+(t.subtitle||'')+'</small></div><div class="sp">'+fmt(t.amount)+'</div></div>').join(''):'<div class="empty" style="padding:12px 0">No unpaid invoices</div>';
-  $('#sheetUpB').innerHTML=html;
-  bindPartySearch('#miscPartyQ','#miscPartyPicks','#miscPartyId');
-  $('#miscSave').onclick=async()=>{
-    const amt=+$('#miscAmt').value;if(!(amt>0))return toast('Enter amount');
-    const cat=$('#miscCat').value,catL=($('#miscCat').selectedOptions[0]||{}).text||cat;
-    const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
-    const partyId=+$('#miscPartyId').value||null;let partyName='';
-    if(partyId){const p=await getById('parties',partyId);if(p){partyName=p.name;p.credit=(+p.credit||0)-amt;await put('parties',p)}}
-    await put('finance',{type:'payment',direction:'in',amount:amt,category:cat,partyId,partyName,note:catL,at:now.toISOString(),ist,source:cat});
-    if(shiftOn())bumpShift('cash',amt);
-    toast('Received '+fmt(amt));closeSheets();renderTx();
-  };
-  $$('#sheetUpB .sheet-item[data-id]').forEach(el=>el.onclick=async()=>{
-    const tx=list.find(t=>t.id===el.dataset.id);if(!tx)return;tx.status='paid';await put('transactions',tx);
-    const now=new Date(),ist=now.toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
-    await put('finance',{type:'payment',direction:'in',amount:+tx.amount||0,category:'sales',partyId:tx.partyId||null,partyName:tx.title||'',note:'Invoice paid',at:now.toISOString(),ist,source:'sales',txId:tx.id});
-    if(tx.partyId){const p=await getById('parties',tx.partyId);if(p){p.credit=(+p.credit||0)-(+tx.amount||0);await put('parties',p)}}
-    if(shiftOn())bumpShift('cash',+tx.amount||0);
-    toast('Marked received');closeSheets();renderTx();
-  });
-  openSheet('#sheetUnpaid');
-};
+$('#btnPlus').onclick=()=>{if(!plusOpen){plusOpen=true;if($('#btnScanFab'))$('#btnScanFab').classList.remove('hid');if($('#btnBil'))$('#btnBil').classList.remove('hid')}else{plusOpen=false;if($('#btnScanFab'))$('#btnScanFab').classList.add('hid');if($('#btnBil'))$('#btnBil').classList.add('hid');openMoreActions()}};
+if($('#btnScanFab'))$('#btnScanFab').onclick=()=>{plusOpen=false;if($('#btnScanFab'))$('#btnScanFab').classList.add('hid');if($('#btnBil'))$('#btnBil').classList.add('hid');showView('text');startScan()};
+$('#btnBil').onclick=()=>{plusOpen=false;if($('#btnScanFab'))$('#btnScanFab').classList.add('hid');$('#btnBil').classList.add('hid');showView('photo')};
+
 
 
 $('#sheetOv').onclick=closeSheets;$('#sheetExX').onclick=closeSheets;$('#sheetStX').onclick=closeSheets;$('#sheetUpX').onclick=closeSheets;if($('#sheetMoreX'))$('#sheetMoreX').onclick=closeSheets;
@@ -603,7 +575,7 @@ async function renderPhoto(q=''){
   }
 }
 let _scanStream=null,_scanLoop=0,_scanBusy=false,_scanLast='',_scanLastAt=0,_scanProds=null;
-function updateScanCart(){const n=cart.reduce((a,c)=>a+c.qty,0),tot=cart.reduce((a,c)=>a+c.qty*c.price,0);if($('#scanCartMeta'))$('#scanCartMeta').textContent=n+' item'+(n===1?'':'s')+' · '+fmt(tot);if($('#scanCartTotal'))$('#scanCartTotal').textContent=fmt(tot);const last=cart.length?cart[cart.length-1]:null;if($('#scanCartLast'))$('#scanCartLast').textContent=last?(last.name+' × '+last.qty+' · '+fmt(last.qty*last.price)):'No items yet';renderCartBar()}
+function updateScanCart(){const n=cart.reduce((s,c)=>s+c.qty,0),t=cart.reduce((s,c)=>s+c.qty*c.price,0);if($('#scanCartMeta'))$('#scanCartMeta').textContent=n+' item'+(n===1?'':'s');if($('#scanCartTotal'))$('#scanCartTotal').textContent=fmt(t);if($('#scanCartList'))$('#scanCartList').innerHTML=cart.length?cart.map(c=>'<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9"><span>'+esc(c.name)+' × '+c.qty+'</span><b>'+fmt(c.qty*c.price)+'</b></div>').join(''):'<div style="color:var(--m);font-size:12px;padding:8px 0">Scan items to add</div>'}
 async function stopScan(){_scanLoop=0;_scanBusy=false;try{if(_scanStream){_scanStream.getTracks().forEach(t=>t.stop());_scanStream=null}}catch(e){}const v=$('#scanVid');if(v)v.srcObject=null;$('#scanM')&&$('#scanM').classList.remove('on')}
 function _bcMatch(p,code){const bcs=String(p.barcode||'').split(/[,;|\s]+/).map(s=>s.trim()).filter(Boolean);return bcs.includes(code)||String(p.sku||'')===code||String(p.id)===code}
 async function handleBarcode(code){code=String(code||'').trim();if(!code)return;const now=Date.now();if(code===_scanLast&&now-_scanLastAt<1200)return;_scanLast=code;_scanLastAt=now;if(!_scanProds)_scanProds=await all('products');const p=_scanProds.find(x=>_bcMatch(x,code));if(!p){if($('#scanHint'))$('#scanHint').textContent='No product for '+code;toast('No product for '+code);return}addToCart(p);updateScanCart();if($('#scanHint'))$('#scanHint').textContent='Added '+p.name+' — scan next';if($('#scanManual'))$('#scanManual').value=''}
@@ -619,10 +591,11 @@ async function startScan(){
 }
 if($('#scanX'))$('#scanX').onclick=()=>stopScan();
 if($('#scanGo'))$('#scanGo').onclick=()=>handleBarcode($('#scanManual').value);
+if($('#scanToCart'))$('#scanToCart').onclick=async()=>{await stopScan();renderCartView();$('#coCart').classList.add('on')};
 if($('#scanManual'))$('#scanManual').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();handleBarcode($('#scanManual').value)}};
-$('#psSearch').oninput=e=>renderPhoto(e.target.value);$('#psScan').onclick=()=>startScan();
+$('#psSearch').oninput=e=>renderPhoto(e.target.value);if($('#psScan'))$('#psScan').onclick=()=>startScan();
 async function renderText(q){const box=$('#tsList');const list=await all('products');let f=list.slice();if(catFilter)f=f.filter(p=>(p.cat||'General')===catFilter);const qq=(q||'').trim().toLowerCase();if(qq)f=f.filter(p=>(p.name||'').toLowerCase().includes(qq)||(p.cat||'').toLowerCase().includes(qq)||String(p.barcode||'').includes(qq));if(!qq&&!catFilter){box.innerHTML='<div class="empty">Start typing or pick a category</div>';return}if(!f.length){box.innerHTML='<div class="empty">No match</div>';return}box.innerHTML=f.map(p=>'<div class="ti" data-id="'+p.id+'"><div class="ico">'+productIcon(p)+'</div><span>'+p.name+((p.stock||0)<=0?' · out of stock':'')+'</span><em>'+fmt(p.price)+'</em></div>').join('');$$('.ti').forEach(c=>c.onclick=()=>selectProduct(f.find(p=>+p.id===+c.dataset.id)))}
-$('#tsSearch').oninput=e=>renderText(e.target.value);$('#tsScan').onclick=()=>startScan();
+$('#tsSearch').oninput=e=>renderText(e.target.value);if($('#tsScan'))$('#tsScan').onclick=()=>startScan();
 function addToCart(p){if(!p)return;const key=p.variantId?('v'+p.variantId):('p'+p.id);const line=cart.find(i=>i._key===key);if(line)line.qty++;else cart.push({_key:key,id:p.id,variantId:p.variantId||null,name:p.name,price:+p.price||0,qty:1});renderCartBar();if($('#scanM')&&$('#scanM').classList.contains('on'))updateScanCart()}
 async function selectProduct(p){if(!p)return;const vars=(await all('variants')).filter(v=>+v.productId===+p.id);if(vars.length){openVariantPicker(p,vars);return}addToCart(p)}
 function openVariantPicker(p,vars){$('#varPickTitle').textContent=p.name+' — choose a variant';$('#varPickList').innerHTML=vars.map(v=>`<button type="button" class="var-row" data-vid="${v.id}"><div><div class="vn">${v.name||'Variant'}</div><div class="vm">Stock ${v.stock||0}${v.sku?' · '+v.sku:''}</div></div><div class="vp">${fmt(v.price!=null?v.price:p.price)}</div></button>`).join('');$$('#varPickList .var-row').forEach(b=>b.onclick=()=>{const v=vars.find(x=>+x.id===+b.dataset.vid);if(!v)return;$('#varPickM').classList.remove('on');addToCart({id:p.id,variantId:v.id,name:p.name+' ('+ (v.name||'Var')+')',price:v.price!=null?v.price:p.price})});$('#varPickM').classList.add('on')}
